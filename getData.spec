@@ -1,5 +1,5 @@
 Name:           getData
-Version:        0.9
+Version:        0.10
 Release:        1%{?dist}
 Summary:        Record and compare system state
 
@@ -25,5 +25,8 @@ install -m 755 getData %{buildroot}%{_bindir}
 %{_bindir}/getData
 
 %changelog
+* Wed Jul 27 2016 Piers Cornwell <piers.cornwell@rackspace.co.uk>
+- Initial public release, version 0.10
+
 * Mon May 9 2016 Piers Cornwell <piers.cornwell@rackspace.co.uk>
 - Initial standalone tagged release, version 0.9
