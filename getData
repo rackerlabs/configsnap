@@ -1,0 +1,437 @@
+#!/usr/bin/python
+
+# Copyright 2016 Rackspace, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+# this file except in compliance with the License.  You may obtain a copy of the
+# License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed
+# under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+# CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations under the License.
+
+import os
+import os.path
+import optparse
+import pwd
+import grp
+import sys
+import subprocess
+import datetime
+import difflib
+import glob
+import re
+
+version="0.10"
+
+def report_verbose(message):
+    if options.verbose_enabled:
+        sys.stdout.write("\033[92m%s\n\033[0m" % message)
+def report_info(message):
+    if not options.silent_enabled:
+        sys.stdout.write("\033[92m%s\n\033[0m" % message)
+def report_info_blue(message):
+    if not options.silent_enabled:
+        sys.stdout.write("\033[1;34m%s\n\033[0m" % message)
+def report_error(message):
+    if not options.silent_enabled:
+        sys.stderr.write("\033[91m%s\n\033[0m" % message)
+
+diffs_found_msg = False
+
+class dataGather:
+
+    def copy_file(self, r_filename, fail_ok=False, sort=False):
+        if not os.path.exists(r_filename):
+            if not fail_ok:
+                report_error("%s does not exist." % r_filename)
+            return
+        filename = os.path.basename(r_filename)
+        w_filename = os.path.join(self.workdir, "%s.%s" %
+                                  (filename, self.phase))
+
+        try:
+            r_fd = open(r_filename, 'r')
+            w_fd = open(w_filename, 'w')
+
+            if sort is False:
+                w_fd.write(r_fd.read())
+            else:
+                data = r_fd.readlines()
+                data.sort()
+                w_fd.writelines(data)
+
+            r_fd.close()
+            w_fd.close()
+            if not options.silent_enabled:
+                sys.stdout.write(" %s \n" % r_filename)
+
+        except IOError:
+            report_error("Error copying %s" % w_filename)
+
+    def run_command(self, command, filename, fail_ok=False,
+                    sort=False, stdout=False, shell=False):
+        try:
+            command_proc = subprocess.Popen(
+                command, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, shell=shell)
+        except OSError, e:
+            if not fail_ok:
+                report_error("Error running %s : %s" %
+                             (command[0], e.strerror))
+            else:
+                pass
+
+        filename = os.path.join(self.workdir, "%s.%s" % (filename, self.phase))
+        output = command_proc.stdout.readlines()
+        returncode = command_proc.wait()
+
+        if not fail_ok and returncode != 0:
+            report_error("%s failed\nPlease troubleshoot manually" % (' '.join(command), ))
+            return None
+
+        if len(output) == 0:
+            return True
+
+        if sort:
+            output.sort()
+
+        if os.path.exists(filename):
+            report_error("%s already exists" % filename)
+
+        try:
+            output_fd = open(filename, 'w')
+        except IOError, e:
+            report_error("Unable to open %s: %s" % (filename, e.strerror))
+            return False
+
+        output_fd.writelines(output)
+        output_fd.close()
+        report_verbose("Recording %s to %s" % (command, filename))
+        if stdout:
+            sys.stdout.writelines(output)
+
+    def get_diff(self, filename):
+        global diffs_found_msg
+        filename = os.path.join(self.workdir, filename)
+        pre_filename = "%s.pre" % filename
+        post_filename = "%s.%s" % (filename, self.phase)
+        try:
+            pre_fd = open(pre_filename)
+            post_fd = open(post_filename)
+        except IOError, e:
+            report_error("Unable to open file %s: %s" %
+                         (e.filename, e.strerror))
+            return False
+
+        pre = pre_fd.readlines()
+        post = post_fd.readlines()
+        pre_fd.close()
+        post_fd.close()
+        found_diff = False
+        for line in difflib.ndiff(pre, post):
+            if line[0] in ('+', '-', '?'):
+                if not found_diff:
+                    found_diff = True
+                    diffs_found_msg = True
+                    report_error("Differences found against %s.pre:\n" % filename)
+                sys.stdout.write(line)
+
+        if not found_diff:
+           report_info("No differences against %s.pre" % filename)
+
+    def __init__(self, workdir, phase):
+        self.workdir = workdir
+        self.phase = phase
+
+parser = optparse.OptionParser()
+parser.add_option("-v", "--verbose",
+                  action="store_true", dest="verbose_enabled", default=False,
+                  help="print debug info")
+parser.add_option("-V", "--version",
+                  action="store_true", dest="print_version", default=False,
+                  help="print version")
+parser.add_option("-s", "--silent",
+                  action="store_true", dest="silent_enabled", default=False,
+                  help="no output to stdout")
+parser.add_option('-t', '--tag', dest='tag',
+                  help='tag identifer (e.g. a ticket number)')
+parser.add_option('-d', '--basedir', dest='basedir', default='/root',
+                  help='base directory to store output')
+parser.add_option('-p', '--phase', dest='phase',
+                  help='phase this is being used for. '
+                       'Can be any string. Phases containing  post  or  rollback  will perform diffs')
+(options, args) = parser.parse_args()
+
+if options.print_version:
+    report_info("getData %s" % version)
+    sys.exit(0)
+
+if os.geteuid() != 0:
+    report_error("Not running as root, exiting")
+    sys.exit(1)
+
+if not options.tag:
+    report_error("No tag given, exiting")
+    sys.exit(1)
+
+tagdir = os.path.join(options.basedir, options.tag)
+workdir = os.path.join(tagdir, "getData")
+
+if not os.path.isdir(workdir):
+    try:
+        os.makedirs(workdir)
+    except OSError:
+        report_error("Unable to create %s" % workdir)
+
+os.chdir(workdir) 
+
+if not "PATH" in os.environ:
+  os.environ['PATH'] = '/usr/bin:/bin'
+os.environ['PATH'] += ':/usr/sbin:/sbin'
+
+if options.phase:
+    phase = options.phase
+    for filename in os.listdir('.'):
+        if filename.endswith(".%s" % phase):
+            report_error("Files for %s already exist in %s" % (phase,
+	    	os.getcwd()))
+            sys.exit(1)
+else:
+    now = datetime.datetime.now()
+    phase = "%d%02d%02d%02d%02d" % (now.year, now.month, now.day,
+                                    now.hour, now.minute)
+
+# This gets an array of processes running on the server
+# It runs ps, then loops over the output and returns a list minus the '\n's
+procs = subprocess.Popen(
+    ['ps', '-A', '--noheaders', '-o', 'args'], stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE)
+
+procs_output = procs.communicate()[0]
+if procs.returncode != 0:
+    report_error('Failed to get process list')
+
+procs_output = map(lambda x: x.strip(), procs_output)
+
+# We try to run vgcfgbackup. Since it produces no output, it doesn't really
+# fit in with the rest of the commands
+
+try:
+    vgcfg = subprocess.Popen(['vgcfgbackup', '-f',
+                              os.path.join(workdir,
+                              "vgcfgbackup-%%s.%s" % phase)],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+    vgcfg.wait()
+except:
+    report_error("vgcfgbackup failed")
+else:
+    if vgcfg.returncode != 0:
+        report_error("vgcfg exited with return code %d" % vgcfg.returncode)
+
+run = dataGather(workdir, phase)
+report_info("Getting storage details (LVM, partitions, PowerPath)...")
+run.run_command(['lvs', '--noheadings'], 'lvs', fail_ok=True, sort=True)
+run.run_command(['vgs', '--noheadings'], 'vgs', fail_ok=True, sort=True)
+run.run_command(['pvs', '--noheadings'], 'pvs', fail_ok=True, sort=True)
+run.run_command(['parted', '-l', '-s'], 'partitions', fail_ok=False, sort=False)
+if os.path.exists('/sbin/powermt'):
+    run.run_command(['powermt', 'display', 'dev=all'],
+                    'powermt', fail_ok=False, sort=False, stdout=False)
+    run.run_command(['rpm', '-q', 'EMCpower.LINUX',
+                    'bfa_util_linux_noioctl', 'bfa_driver_linux'],
+                    'san_packages', fail_ok=True, sort=True)
+
+report_info("Getting process list...")
+run.run_command(['ps', 'a', 'u', 'f', 'x'], 'ps', fail_ok=False, sort=False)
+
+report_info("Getting package list and enabled services...")
+run.run_command(['uname', '-r'], 'uname', fail_ok=False, sort=False)
+if os.path.exists('/bin/rpm'):
+    run.run_command(['rpm', '-qa'], 'packages', fail_ok=False, sort=True)
+if os.path.exists('/usr/bin/dpkg'):
+    run.run_command(['dpkg', '-l'], 'packages', fail_ok=False, sort=False)
+if os.path.exists('/sbin/chkconfig'):
+    run.run_command(['chkconfig', '--list'], 'sysvinit', fail_ok=False, sort=True)
+if os.path.exists('/usr/sbin/sysv-rc-conf'):
+    run.run_command(['sysv-rc-conf', '--list'], 'sysvinit', fail_ok=True, sort=True)
+if os.path.exists('/sbin/initctl'):
+    run.run_command(['initctl', 'list'], 'upstartinit', fail_ok=True, sort=True)
+
+report_info("Getting network details and listening services...")
+run.run_command(['ip', 'address', 'show'],
+                'ip_addresses', fail_ok=False, sort=False)
+run.run_command(['ip', 'route', 'show'],
+                'ip_routes', fail_ok=False, sort=False)
+run.run_command(
+    "netstat -nutlp|awk -F'[ /]+' '/tcp/ {print $8,$1,$4}'|column -t",
+    'netstat', fail_ok=False, sort=True, shell=True)
+
+report_info("Getting cluster status...")
+if os.path.exists('/usr/sbin/clustat'):
+    run.run_command(['clustat', '-l'], 'clustat',
+                    fail_ok=False, sort=False, stdout=False)
+
+report_info("Getting misc (dmesg, lspci, sysctl)...")
+run.run_command(['dmesg'], 'dmesg', fail_ok=False, sort=False)
+run.run_command(['lspci', '-mm'], 'lspci', fail_ok=True, sort=True)
+run.run_command(['sysctl', '-a'], 'sysctl', fail_ok=True, sort=True)
+
+omreportpath='/opt/dell/srvadmin/bin/omreport'
+if os.path.exists(omreportpath):
+    report_info("Getting Dell hardware information...")
+    run.run_command([omreportpath, 'chassis'],
+                    'omreport_chassis', fail_ok=True,
+                    sort=False, stdout=False)
+    run.run_command([omreportpath, 'chassis', 'biossetup'],
+                    'omreport_biossetup', fail_ok=True,
+                    sort=False, stdout=False)
+    run.run_command([omreportpath, 'system', 'version'],
+                    'omreport_version', fail_ok=True,
+                    sort=False, stdout=False)
+    run.run_command([omreportpath, 'chassis', 'memory'],
+                    'omreport_memory', fail_ok=True,
+                    sort=False, stdout=False)
+    run.run_command([omreportpath, 'chassis', 'processors'],
+                    'omreport_processors', fail_ok=True,
+                    sort=False, stdout=False)
+    run.run_command([omreportpath, 'chassis', 'nics'],
+                    'omreport_nics', fail_ok=True,
+                    sort=False, stdout=False)
+    run.run_command([omreportpath, 'storage', 'vdisk'],
+                    'omreport_vdisk', fail_ok=True,
+                    sort=False, stdout=False)
+    run.run_command([omreportpath, 'storage', 'pdisk', 'controller=0'],
+                    'omreport_pdisk', fail_ok=True, sort=False, stdout=False)
+    run.run_command([omreportpath, 'storage', 'battery'],
+                    'omreport_raidbattery', fail_ok=True, sort=False, stdout=False)
+
+hpasmpath='/sbin/hpasmcli'
+dmipath='/usr/sbin/dmidecode'
+hpstorutil=['/usr/sbin/hpssacli','/usr/sbin/hpacucli']
+if os.path.exists(hpasmpath):
+    report_info("Getting HP hardware information...")
+    run.run_command([hpasmpath, '-s', 'show server'],
+                    'hpreport_server', fail_ok=True,
+                    sort=False, stdout=False)
+    run.run_command([hpasmpath, '-s', 'show dimm'],
+                    'hpreport_memory', fail_ok=True,
+                    sort=False, stdout=False)
+    if os.path.exists(dmipath):
+        run.run_command([dmipath, '-t', 'bios'],
+                        'hpreport_bios', fail_ok=True,
+                        sort=False, stdout=False)
+    for storutil in hpstorutil:
+        if os.path.exists(storutil):
+            report_info("Getting HP storage data...")
+            run.run_command([storutil, 'controller', 'all', 'show', 'detail'],
+                            'hpreport_storage_controller', fail_ok=True,
+                            sort=False, stdout=False)
+            # Grab the ID of the first controller reported
+            # This returns something like:
+            # "Smart Array P400 in Slot 1"
+            stor_cmd = subprocess.Popen(
+                [storutil, 'controller', 'all', 'show'], 
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stor_out = stor_cmd.stdout.readlines()
+            stor_cmd.wait()
+            for o in stor_out:
+                m = re.search('lot ([0-9]+)', o)
+                if m:
+                    run.run_command(
+                        [storutil, 'controller', "slot=%s" % m.group(1), 'logicaldrive', 'all', 'show', 'detail'],
+                        'hpreport_storage_vdisk', fail_ok=True, sort=False, stdout=False)
+                    run.run_command(
+                        [storutil, 'controller', "slot=%s" % m.group(1), 'physicaldrive', 'all', 'show', 'detail'],
+                        'hpreport_storage_pdisk', fail_ok=True, sort=False, stdout=False)
+                    break
+            break
+ 
+if '/usr/sbin/httpd' in procs_output or '/usr/sbin/httpd.worker' in procs_output:
+    report_info("Getting Apache vhosts and modules...")
+    run.run_command(
+        ['httpd', '-S'], 'httpd_vhosts', fail_ok=False, sort=False)
+    run.run_command(
+        ['httpd', '-M'], 'httpd_modules', fail_ok=False, sort=False)
+
+# This runs through the processes and returns only those which
+# contain the string mysqld
+if len(filter(lambda x: 'mysqld' in x, procs_output)) > 0:
+    report_info("Getting MySQL databases...")
+    run.run_command(['mysql', '-Bse', 'show databases;'],
+                    'mysql_databases', fail_ok=False, sort=True)
+
+# copy important files
+report_info("Copying files...")
+run.copy_file('/boot/grub/grub.conf', fail_ok=True)
+run.copy_file('/etc/fstab', fail_ok=False)
+run.copy_file('/etc/hosts', fail_ok=False)
+run.copy_file('/etc/sysconfig/network', fail_ok=True)
+run.copy_file('/etc/network/interfaces', fail_ok=True)
+run.copy_file('/etc/cluster/cluster.conf', fail_ok=True)
+run.copy_file('/etc/yum.conf', fail_ok=True)
+run.copy_file('/etc/apt/sources.list', fail_ok=True)
+run.copy_file('/proc/cmdline', fail_ok=False)
+run.copy_file('/proc/meminfo', fail_ok=False)
+run.copy_file('/proc/mounts', fail_ok=False, sort=False)
+run.copy_file('/proc/scsi/scsi', fail_ok=False, sort=False)
+for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
+    run.copy_file(filename, fail_ok=False)
+for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
+    run.copy_file(filename, fail_ok=False)
+report_info("\n")
+
+if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
+    # Check that there are pre files, and exit if there aren't
+    found_pre = False
+    for filename in os.listdir(workdir):
+        if filename.endswith('pre'):
+            found_pre = True
+    if not found_pre:
+        report_error("Unable to diff, as no pre files")
+        sys.exit(0)
+
+    report_info("This is  %s  phase so performing diffs..." % phase)
+
+    for filename in ('sysvinit', 'mounts', 'netstat', 'ip_addresses', 
+                     'ip_routes', 'partitions', 'lspci'):
+        run.get_diff(filename)
+
+    if 'rollback' in phase:
+        run.get_diff('packages')
+
+    for filename in ('lvs', 'pvs', 'vgs', 'powermt', 'omreport_version',
+                     'omreport_memory', 'omreport_processors',
+                     'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
+                     'hpreport_server','hpreport_memory','hpreport_bios',
+                     'hpreport_storage_controller','hpreport_storage_vdisk',
+                     'hpreport_storage_pdisk',
+                     'httpd_vhosts', 'httpd_modules', 'mysql_databases',
+                     'yum.conf', 'san_packages'):
+        pre_filename = os.path.join(workdir,
+                                    "%s.pre" % filename)
+        if os.path.exists(pre_filename):
+            run.get_diff(filename)
+
+    uname_pre_fd = open(
+        os.path.join(workdir, 'uname.pre'), 'r')
+    uname_post_fd = open(
+        os.path.join(workdir, "uname.%s" % phase), 'r')
+    uname_pre = uname_pre_fd.read().strip()
+    uname_post = uname_post_fd.read().strip()
+    if uname_pre != uname_post:
+        sys.stdout.write("Old uname: %s. New uname: %s\n" %
+                         (uname_pre, uname_post))
+
+    if diffs_found_msg:
+        report_info_blue("\nINTERPRETING DIFFS:\n")
+        report_info_blue("* Lines beginning with a - show an entry from the .pre file which has changed\nor which is not present in the .post or .rollback file.\n")
+        report_info_blue("* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the .pre file.\n")
+        report_info_blue("Please review all diff output above carefully and account for any differences\nfound.\n")
+
+# cleanup
+report_info("Finished! Backups were saved to %s/*.%s" % (workdir, phase))
