@@ -241,7 +241,7 @@ run.run_command(['pvs', '--noheadings'], 'pvs', fail_ok=True, sort=True)
 run.run_command(['parted', '-l', '-s'], 'partitions', fail_ok=False, sort=False)
 if os.path.exists('/sbin/powermt'):
     run.run_command(['powermt', 'display', 'dev=all'],
-                    'powermt', fail_ok=False, sort=False, stdout=False)
+                    'powermt', fail_ok=True, sort=False, stdout=False)
     run.run_command(['rpm', '-q', 'EMCpower.LINUX',
                     'bfa_util_linux_noioctl', 'bfa_driver_linux'],
                     'san_packages', fail_ok=True, sort=True)
