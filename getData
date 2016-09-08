@@ -235,9 +235,10 @@ else:
 
 run = dataGather(workdir, phase)
 report_info("Getting storage details (LVM, partitions, PowerPath)...")
-run.run_command(['lvs', '--noheadings'], 'lvs', fail_ok=True, sort=True)
-run.run_command(['vgs', '--noheadings'], 'vgs', fail_ok=True, sort=True)
-run.run_command(['pvs', '--noheadings'], 'pvs', fail_ok=True, sort=True)
+if os.path.exists('/sbin/lvs'):
+    run.run_command(['lvs', '--noheadings'], 'lvs', fail_ok=True, sort=True)
+    run.run_command(['vgs', '--noheadings'], 'vgs', fail_ok=True, sort=True)
+    run.run_command(['pvs', '--noheadings'], 'pvs', fail_ok=True, sort=True)
 run.run_command(['parted', '-l', '-s'], 'partitions', fail_ok=False, sort=False)
 if os.path.exists('/sbin/powermt'):
     run.run_command(['powermt', 'display', 'dev=all'],
