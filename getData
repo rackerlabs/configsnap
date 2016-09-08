@@ -279,7 +279,8 @@ if os.path.exists('/usr/sbin/clustat'):
 
 report_info("Getting misc (dmesg, lspci, sysctl)...")
 run.run_command(['dmesg'], 'dmesg', fail_ok=False, sort=False)
-run.run_command(['lspci', '-mm'], 'lspci', fail_ok=True, sort=True)
+if os.path.exists('/sbin/lspci'):
+    run.run_command(['lspci', '-mm'], 'lspci', fail_ok=True, sort=True)
 run.run_command(['sysctl', '-a'], 'sysctl', fail_ok=True, sort=True)
 
 omreportpath='/opt/dell/srvadmin/bin/omreport'
