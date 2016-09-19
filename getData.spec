@@ -2,7 +2,6 @@ Name:           getData
 Version:        0.10
 Release:        1%{?dist}
 Summary:        Record and compare system state
-
 License:        ASL 2.0
 URL:            https://github.com/rackerlabs/getData
 Source0:        %{name}-%{version}.tar.gz
@@ -22,6 +21,11 @@ install -m 755 getData %{buildroot}%{_bindir}
 
 %files
 %defattr(-,root,root,-)
+%{!?_licensedir:%global license %doc}
+%license LICENSE
+%doc README.md
+%doc NEWS
+%doc MAINTAINERS.md
 %{_bindir}/getData
 
 %changelog
