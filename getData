@@ -219,6 +219,7 @@ procs_output = map(lambda x: x.strip(), procs_output)
 
 # We try to run vgcfgbackup. Since it produces no output, it doesn't really
 # fit in with the rest of the commands
+report_info("Getting storage details (LVM, partitions, multipathing)...")
 
 try:
     vgcfg = subprocess.Popen(['vgcfgbackup', '-f',
@@ -234,18 +235,16 @@ else:
         report_error("vgcfg exited with return code %d" % vgcfg.returncode)
 
 run = dataGather(workdir, phase)
-report_info("Getting storage details (LVM, partitions, PowerPath)...")
 if os.path.exists('/sbin/lvs'):
     run.run_command(['lvs', '--noheadings'], 'lvs', fail_ok=True, sort=True)
     run.run_command(['vgs', '--noheadings'], 'vgs', fail_ok=True, sort=True)
     run.run_command(['pvs', '--noheadings'], 'pvs', fail_ok=True, sort=True)
 run.run_command(['parted', '-l', '-s'], 'partitions', fail_ok=False, sort=False)
+if os.path.exists('/etc/multipath.conf'):
+    run.run_command(['multipath', '-l'], 'multipath', fail_ok=True, sort=False)
 if os.path.exists('/sbin/powermt'):
     run.run_command(['powermt', 'display', 'dev=all'],
                     'powermt', fail_ok=True, sort=False, stdout=False)
-    run.run_command(['rpm', '-q', 'EMCpower.LINUX',
-                    'bfa_util_linux_noioctl', 'bfa_driver_linux'],
-                    'san_packages', fail_ok=True, sort=True)
 
 report_info("Getting process list...")
 run.run_command(['ps', 'a', 'u', 'f', 'x'], 'ps', fail_ok=False, sort=False)
@@ -411,9 +410,9 @@ if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
                      'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
                      'hpreport_server','hpreport_memory','hpreport_bios',
                      'hpreport_storage_controller','hpreport_storage_vdisk',
-                     'hpreport_storage_pdisk',
+                     'hpreport_storage_pdisk', 'multipath',
                      'httpd_vhosts', 'httpd_modules', 'mysql_databases',
-                     'yum.conf', 'san_packages'):
+                     'yum.conf'):
         pre_filename = os.path.join(workdir,
                                     "%s.pre" % filename)
         if os.path.exists(pre_filename):
