@@ -169,7 +169,7 @@ parser.add_option('-p', '--phase', dest='phase',
 (options, args) = parser.parse_args()
 
 if options.print_version:
-    report_info("getData %s" % version)
+    print "getData %s" % version
     sys.exit(0)
 
 if os.geteuid() != 0:
