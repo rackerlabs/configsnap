@@ -147,7 +147,9 @@ class dataGather:
         self.workdir = workdir
         self.phase = phase
 
-parser = optparse.OptionParser()
+desc='Record useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".'
+
+parser = optparse.OptionParser(description=desc)
 parser.add_option("-v", "--verbose",
                   action="store_true", dest="verbose_enabled", default=False,
                   help="print debug info")
@@ -167,7 +169,7 @@ parser.add_option('-p', '--phase', dest='phase',
 (options, args) = parser.parse_args()
 
 if options.print_version:
-    report_info("getData %s" % version)
+    print "getData %s" % version
     sys.exit(0)
 
 if os.geteuid() != 0:
