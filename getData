@@ -207,8 +207,7 @@ else:
     phase = "%d%02d%02d%02d%02d" % (now.year, now.month, now.day,
                                     now.hour, now.minute)
 
-# This gets an array of processes running on the server
-# It runs ps, then loops over the output and returns a list minus the '\n's
+# Get a list of processes running on the server
 procs = subprocess.Popen(
     ['ps', '-A', '--noheaders', '-o', 'args'], stdout=subprocess.PIPE,
     stderr=subprocess.PIPE)
@@ -217,30 +216,30 @@ procs_output = procs.communicate()[0]
 if procs.returncode != 0:
     report_error('Failed to get process list')
 
-procs_output = map(lambda x: x.strip(), procs_output)
-
-# We try to run vgcfgbackup. Since it produces no output, it doesn't really
-# fit in with the rest of the commands
-report_info("Getting storage details (LVM, partitions, multipathing)...")
-
-try:
-    vgcfg = subprocess.Popen(['vgcfgbackup', '-f',
-                              os.path.join(workdir,
-                              "vgcfgbackup-%%s.%s" % phase)],
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-    vgcfg.wait()
-except:
-    report_error("vgcfgbackup failed")
-else:
-    if vgcfg.returncode != 0:
-        report_error("vgcfg exited with return code %d" % vgcfg.returncode)
+# Just keep the process name, drop the arguments
+procs_output = procs_output.splitlines()
+procs_output = [x.split()[0] for x in procs_output]
 
 run = dataGather(workdir, phase)
+report_info("Getting storage details (LVM, partitions, multipathing)...")
 if os.path.exists('/sbin/lvs'):
     run.run_command(['lvs', '--noheadings'], 'lvs', fail_ok=True, sort=True)
     run.run_command(['vgs', '--noheadings'], 'vgs', fail_ok=True, sort=True)
     run.run_command(['pvs', '--noheadings'], 'pvs', fail_ok=True, sort=True)
+
+    try:
+        vgcfg = subprocess.Popen(['vgcfgbackup', '-f',
+                                  os.path.join(workdir,
+                                  "vgcfgbackup-%%s.%s" % phase)],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+        vgcfg.wait()
+    except:
+        report_error("vgcfgbackup failed")
+    else:
+        if vgcfg.returncode != 0:
+            report_error("vgcfg exited with return code %d" % vgcfg.returncode)
+
 run.run_command(['parted', '-l', '-s'], 'partitions', fail_ok=False, sort=False)
 if os.path.exists('/etc/multipath.conf'):
     run.run_command(['multipath', '-l'], 'multipath', fail_ok=True, sort=False)
@@ -263,6 +262,8 @@ if os.path.exists('/usr/sbin/sysv-rc-conf'):
     run.run_command(['sysv-rc-conf', '--list'], 'sysvinit', fail_ok=True, sort=True)
 if os.path.exists('/sbin/initctl'):
     run.run_command(['initctl', 'list'], 'upstartinit', fail_ok=True, sort=True)
+if os.path.exists('/usr/bin/systemctl'):
+    run.run_command(['systemctl', 'list-unit-files'], 'systemdinit', fail_ok=True, sort=False)
 
 report_info("Getting network details and listening services...")
 run.run_command(['ip', 'address', 'show'],
@@ -353,17 +354,15 @@ if os.path.exists(hpasmpath):
                         'hpreport_storage_pdisk', fail_ok=True, sort=False, stdout=False)
                     break
             break
- 
+
 if '/usr/sbin/httpd' in procs_output or '/usr/sbin/httpd.worker' in procs_output:
     report_info("Getting Apache vhosts and modules...")
     run.run_command(
         ['httpd', '-S'], 'httpd_vhosts', fail_ok=False, sort=False)
     run.run_command(
-        ['httpd', '-M'], 'httpd_modules', fail_ok=False, sort=False)
+        ['httpd', '-M'], 'httpd_modules', fail_ok=False, sort=True)
 
-# This runs through the processes and returns only those which
-# contain the string mysqld
-if len(filter(lambda x: 'mysqld' in x, procs_output)) > 0:
+if '/usr/libexec/mysqld' in procs_output:
     report_info("Getting MySQL databases...")
     run.run_command(['mysql', '-Bse', 'show databases;'],
                     'mysql_databases', fail_ok=False, sort=True)
@@ -371,12 +370,14 @@ if len(filter(lambda x: 'mysqld' in x, procs_output)) > 0:
 # copy important files
 report_info("Copying files...")
 run.copy_file('/boot/grub/grub.conf', fail_ok=True)
+run.copy_file('/etc/default/grub', fail_ok=True)
 run.copy_file('/etc/fstab', fail_ok=False)
 run.copy_file('/etc/hosts', fail_ok=False)
 run.copy_file('/etc/sysconfig/network', fail_ok=True)
 run.copy_file('/etc/network/interfaces', fail_ok=True)
 run.copy_file('/etc/cluster/cluster.conf', fail_ok=True)
 run.copy_file('/etc/yum.conf', fail_ok=True)
+run.copy_file('/etc/dnf/dnf.conf', fail_ok=True)
 run.copy_file('/etc/apt/sources.list', fail_ok=True)
 run.copy_file('/proc/cmdline', fail_ok=False)
 run.copy_file('/proc/meminfo', fail_ok=False)
@@ -412,9 +413,8 @@ if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
                      'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
                      'hpreport_server','hpreport_memory','hpreport_bios',
                      'hpreport_storage_controller','hpreport_storage_vdisk',
-                     'hpreport_storage_pdisk', 'multipath',
-                     'httpd_vhosts', 'httpd_modules', 'mysql_databases',
-                     'yum.conf'):
+                     'hpreport_storage_pdisk', 'multipath', 'systemdinit',
+                     'upstartinit', 'yum.conf', 'dnf.conf'):
         pre_filename = os.path.join(workdir,
                                     "%s.pre" % filename)
         if os.path.exists(pre_filename):
