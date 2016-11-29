@@ -370,6 +370,7 @@ if '/usr/libexec/mysqld' in procs_output:
 # copy important files
 report_info("Copying files...")
 run.copy_file('/boot/grub/grub.conf', fail_ok=True)
+run.copy_file('/boot/grub2/grubenv', fail_ok=True)
 run.copy_file('/etc/default/grub', fail_ok=True)
 run.copy_file('/etc/fstab', fail_ok=False)
 run.copy_file('/etc/hosts', fail_ok=False)
