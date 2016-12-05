@@ -1,9 +1,9 @@
-# getData
+# configsnap
 
 Records useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".
 
 ```
-Usage: getData [options]
+Usage: configsnap [options]
 
 Options:
   -h, --help            show this help message and exit
@@ -21,7 +21,7 @@ Options:
 
 Example output:
 ```
-# ./getData -t junepatching -p pre
+# ./configsnap -t junepatching -p pre
 Getting storage details (LVM, partitions, PowerPath)...
 Getting process list...
 Getting package list and enabled services...
@@ -47,5 +47,5 @@ Copying files...
  /etc/sysconfig/network-scripts/route-eth2 
 
 
-Finished! Backups were saved to /root/junepatching/getData/*.pre
+Finished! Backups were saved to /root/junepatching/configsnap/*.pre
 ```

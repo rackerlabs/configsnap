@@ -169,7 +169,7 @@ parser.add_option('-p', '--phase', dest='phase',
 (options, args) = parser.parse_args()
 
 if options.print_version:
-    print "getData %s" % version
+    print "configsnap %s" % version
     sys.exit(0)
 
 if os.geteuid() != 0:
@@ -181,7 +181,7 @@ if not options.tag:
     sys.exit(1)
 
 tagdir = os.path.join(options.basedir, options.tag)
-workdir = os.path.join(tagdir, "getData")
+workdir = os.path.join(tagdir, "configsnap")
 
 if not os.path.isdir(workdir):
     try:
