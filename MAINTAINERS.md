@@ -1,4 +1,4 @@
-getData is maintained by:
+configsnap is maintained by:
 ```
 	- Cameron Beere
         - Piers Cornwell
