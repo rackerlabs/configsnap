@@ -1,4 +1,13 @@
 configsnap NEWS
 
+0.11
+ * Renamed from getData to configsnap
+ * Backup grubenv for grub2
+ * Support for Fedora
+ * Added man page
+ * Record dm-multipath information
+ * Continue if lvm isn't present
+ * Allow PowerPath to be present, but with no LUNs 
+
 0.10
  * Initial public release
