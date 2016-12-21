@@ -1,5 +1,5 @@
 Name:          configsnap
-Version:       0.10
+Version:       0.11
 Release:       1%{?dist}
 Summary:       Record and compare system state
 License:       ASL 2.0
@@ -35,6 +35,15 @@ install -p -m 0644 %{name}.man %{buildroot}%{_mandir}/man1/%{name}.1
 %{_bindir}/%{name}
 
 %changelog
+* Wed Dec 21 2016 Piers Cornwell <piers.cornwell@rackspace.co.uk> 0.11-1
+- Renamed from getData to configsnap
+- Backup grubenv for grub2
+- Support for Fedora
+- Added man page
+- Record dm-multipath information
+- Continue if lvm isn't present
+- Allow PowerPath to be present, but with no LUNs
+
 * Wed Jul 27 2016 Piers Cornwell <piers.cornwell@rackspace.co.uk> 0.10-1
 - Initial public release, version 0.10
 
