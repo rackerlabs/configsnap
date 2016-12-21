@@ -1,5 +1,5 @@
 Name:          configsnap
-Version:       0.11
+Version:       0.12
 Release:       1%{?dist}
 Summary:       Record and compare system state
 License:       ASL 2.0
