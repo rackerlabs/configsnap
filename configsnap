@@ -80,12 +80,12 @@ class dataGather:
                 stderr=subprocess.PIPE, shell=shell)
         except OSError, e:
             if not fail_ok:
-                report_error("Error running %s : %s" %
+                report_error("Error running %s: %s" %
                              (command[0], e.strerror))
+                return None
             else:
-                pass
+                return None
 
-        filename = os.path.join(self.workdir, "%s.%s" % (filename, self.phase))
         output = command_proc.stdout.readlines()
         returncode = command_proc.wait()
 
@@ -98,6 +98,8 @@ class dataGather:
 
         if sort:
             output.sort()
+
+        filename = os.path.join(self.workdir, "%s.%s" % (filename, self.phase))
 
         if os.path.exists(filename):
             report_error("%s already exists" % filename)
