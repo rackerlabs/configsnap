@@ -1,2 +1,0 @@
-echo "This script's name has changed from getData to configsnap. Please update your tools to use configsnap instead."
-echo "https://github.com/rackerlabs/configsnap"
