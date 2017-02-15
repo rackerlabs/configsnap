@@ -372,7 +372,7 @@ if '/usr/sbin/httpd' in procs_output or '/usr/sbin/httpd.worker' in procs_output
 if '/usr/libexec/mysqld' in procs_output:
     report_info("Getting MySQL databases...")
     run.run_command(['mysql', '-Bse', 'show databases;'],
-                    'mysql_databases', fail_ok=False, sort=True)
+                    'mysql_databases', fail_ok=True, sort=True)
 
 # copy important files
 report_info("Copying files...")
