@@ -436,7 +436,8 @@ if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
 
     if is_php_detected:
         run.get_diff('php.ini')
-        run.get_diff('pecl-list')
+        if os.path.exists('/usr/bin/pecl'):
+            run.get_diff('pecl-list')
         for filename in glob.glob(os.path.join(workdir, "php.d/*pre")):
             filename = str.replace(filename, ".pre", "")
             run.get_diff(filename)
