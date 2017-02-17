@@ -397,6 +397,17 @@ for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
     run.copy_file(filename, fail_ok=False)
 report_info("\n")
 
+# php specifics
+if os.path.exists('/etc/php.ini'):
+    report_info("Copying PHP related files...")
+    run.copy_file('/etc/php.ini', fail_ok=True)
+    for filename in glob.glob('/etc/php.d/*'):
+        run.copy_file(filename, fail_ok=False)
+    run.run_command(
+        ['php', '-m'], 'php_modules', fail_ok=False, sort=True)
+    if os.path.exists('/usr/bin/pecl'):
+        run.run_command(['pecl', 'list'], 'pecl-list', fail_ok=True, sort=True)
+
 if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
     # Check that there are pre files, and exit if there aren't
     found_pre = False
