@@ -44,13 +44,19 @@ diffs_found_msg = False
 
 class dataGather:
 
-    def copy_file(self, r_filename, fail_ok=False, sort=False):
+    def copy_file(self, r_filename, destdir=None, fail_ok=False, sort=False):
+        # Did we override the destination
+        if destdir is None:
+            destdir = self.workdir
+        else:
+          report_error(" *** %s" % destdir)
+
         if not os.path.exists(r_filename):
             if not fail_ok:
                 report_error("%s does not exist." % r_filename)
             return
         filename = os.path.basename(r_filename)
-        w_filename = os.path.join(self.workdir, "%s.%s" %
+        w_filename = os.path.join(destdir, "%s.%s" %
                                   (filename, self.phase))
 
         try:
@@ -401,12 +407,16 @@ report_info("\n")
 if os.path.exists('/etc/php.ini'):
     report_info("Copying PHP related files...")
     run.copy_file('/etc/php.ini', fail_ok=True)
+    destdir = os.path.join(workdir, "php.d/")
+    if not os.path.exists(destdir):
+        os.makedirs(destdir)
+    
     for filename in glob.glob('/etc/php.d/*'):
-        run.copy_file(filename, fail_ok=False)
+        run.copy_file(filename, destdir, fail_ok=False)
     run.run_command(
-        ['php', '-m'], 'php_modules', fail_ok=False, sort=True)
+        ['php', '-m'], 'php_modules', fail_ok=False, sort=False)
     if os.path.exists('/usr/bin/pecl'):
-        run.run_command(['pecl', 'list'], 'pecl-list', fail_ok=True, sort=True)
+        run.run_command(['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
 
 if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
     # Check that there are pre files, and exit if there aren't
