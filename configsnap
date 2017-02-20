@@ -41,16 +41,21 @@ def report_error(message):
         sys.stderr.write("\033[91m%s\n\033[0m" % message)
 
 diffs_found_msg = False
+is_php_detected = False
 
 class dataGather:
 
-    def copy_file(self, r_filename, fail_ok=False, sort=False):
+    def copy_file(self, r_filename, destdir=None, fail_ok=False, sort=False):
+        # Did we override the destination
+        if destdir is None:
+            destdir = self.workdir
+
         if not os.path.exists(r_filename):
             if not fail_ok:
                 report_error("%s does not exist." % r_filename)
             return
         filename = os.path.basename(r_filename)
-        w_filename = os.path.join(self.workdir, "%s.%s" %
+        w_filename = os.path.join(destdir, "%s.%s" %
                                   (filename, self.phase))
 
         try:
@@ -397,6 +402,22 @@ for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
     run.copy_file(filename, fail_ok=False)
 report_info("\n")
 
+# php specifics
+if os.path.exists('/etc/php.ini'):
+    is_php_detected = True
+    report_info("Copying PHP related files...")
+    run.copy_file('/etc/php.ini', fail_ok=True)
+    destdir = os.path.join(workdir, "php.d/")
+    if not os.path.exists(destdir):
+        os.makedirs(destdir)
+
+    for filename in glob.glob('/etc/php.d/*'):
+        run.copy_file(filename, destdir, fail_ok=False)
+    run.run_command(
+        ['php', '-m'], 'php_modules', fail_ok=False, sort=False)
+    if os.path.exists('/usr/bin/pecl'):
+        run.run_command(['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
+
 if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
     # Check that there are pre files, and exit if there aren't
     found_pre = False
@@ -412,6 +433,14 @@ if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
     for filename in ('sysvinit', 'mounts', 'netstat', 'ip_addresses',
                      'ip_routes', 'partitions', 'lspci'):
         run.get_diff(filename)
+
+    if is_php_detected:
+        run.get_diff('php.ini')
+        if os.path.exists('/usr/bin/pecl'):
+            run.get_diff('pecl-list')
+        for filename in glob.glob(os.path.join(workdir, "php.d/*pre")):
+            filename = str.replace(filename, ".pre", "")
+            run.get_diff(filename)
 
     if 'rollback' in phase:
         run.get_diff('packages')
