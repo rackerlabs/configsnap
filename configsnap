@@ -281,7 +281,7 @@ if os.path.exists('/usr/sbin/clustat'):
 if os.path.exists('/usr/sbin/pcs'):
     run.run_command(['pcs', 'status'], 'pcs_status',
                     fail_ok=False, sort=False, stdout=False)
-    run.run_command(['pcs', 'constraint', 'list'], 'pcs_constraints',
+    run.run_command(['pcs', 'constraint', 'show', '--full'], 'pcs_constraints',
                     fail_ok=False, sort=False, stdout=False)
 
 report_info("Getting misc (dmesg, lspci, sysctl)...")
