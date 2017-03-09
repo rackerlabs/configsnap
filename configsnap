@@ -288,10 +288,9 @@ if os.path.exists('/usr/sbin/pcs'):
 
 report_info("Getting misc (dmesg, lspci, sysctl)...")
 run.run_command(['dmesg'], 'dmesg', fail_ok=False, sort=False)
-if os.path.exists('/sbin/lspci'):
+if os.path.exists('/sbin/lspci') or os.path.exists('/usr/bin/lspci'):
     run.run_command(['lspci', '-mm'], 'lspci', fail_ok=True, sort=True)
-if os.path.exists('/usr/bin/lspci'):
-    run.run_command(['lspci', '-mm'], 'lspci', fail_ok=True, sort=True)
+
 run.run_command(['sysctl', '-a'], 'sysctl', fail_ok=True, sort=True)
 
 omreportpath='/opt/dell/srvadmin/bin/omreport'
