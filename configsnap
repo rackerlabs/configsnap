@@ -416,6 +416,8 @@ if os.path.exists('/etc/php.ini'):
         run.copy_file(filename, destdir, fail_ok=False)
     run.run_command(
         ['php', '-m'], 'php_modules', fail_ok=False, sort=False)
+    run.run_command(
+        ['php', '-i'], 'php_info', fail_ok=False, sort=False)
     if os.path.exists('/usr/bin/pecl'):
         run.run_command(['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
 
