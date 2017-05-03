@@ -272,11 +272,12 @@ if os.path.exists('/sbin/initctl'):
 if os.path.exists('/usr/bin/systemctl'):
     run.run_command(['systemctl', 'list-unit-files'], 'systemdinit', fail_ok=True, sort=False)
 
-report_info("Getting network details and listening services...")
+report_info("Getting network details, firewall rules and listening services...")
 run.run_command(['ip', 'address', 'show'],
                 'ip_addresses', fail_ok=False, sort=False)
 run.run_command(['ip', 'route', 'show'],
                 'ip_routes', fail_ok=False, sort=False)
+run.run_command(['iptables', '--list-rules'], 'iptables', fail_ok=True, sort=False)
 run.run_command(
     "netstat -nutlp|awk -F'[ /]+' '/tcp/ {print $8,$1,$4}'|column -t",
     'netstat', fail_ok=False, sort=True, shell=True)
