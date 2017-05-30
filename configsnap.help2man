@@ -1,0 +1,25 @@
+[Files]
+
+\//etc/configsnap/additional.conf
+  Optional configuration file to define additional command output and files to collect.
+
+[Custom Collection]
+
+Commands are all run as root, so the custom collection configuration file must be owned by root and not read or writable by other users. The file format is:
+
+\ [section] - The name of the output file, and the status message for this collection
+ Type - Command, to run a command, or File to save a file
+ Command - When Type = Command, the fully qualified command to run, e.g. /bin/ss -tanp
+ File - The fully qualified path to a file to save, e.g. /etc/debconf.conf
+
+Examples:
+
+\ [psspecial]
+ Type: Command
+ Command: /bin/ps -aux
+
+\ [debconf.conf]
+ Type: File
+ File: /etc/debconf.conf
+
+These would record two files per run, psspecial.phase and debconf.conf.phase.

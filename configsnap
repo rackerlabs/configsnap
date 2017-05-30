@@ -13,6 +13,7 @@
 # CONDITIONS OF ANY KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations under the License.
 
+import ConfigParser
 import os
 import os.path
 import optparse
@@ -214,6 +215,20 @@ else:
     phase = "%d%02d%02d%02d%02d" % (now.year, now.month, now.day,
                                     now.hour, now.minute)
 
+# Load custom collection list
+customcollectionfile = '/etc/configsnap/additional.conf'
+Config = ConfigParser.ConfigParser()
+if os.path.exists(customcollectionfile):
+    # Check file is owned by root and not read/writable by anyone else
+    st = os.stat(customcollectionfile)
+    if st.st_uid != 0:
+        report_error("Custom collection file %s not owned by root, ignoring" % customcollectionfile)
+    elif oct(st.st_mode)[-2:] != '00':
+        report_error("Custom collection file %s is read or writable by non-root, ignoring" % customcollectionfile)
+    else:
+        # Only read in the config file if the above checks have passed
+        Config.read(customcollectionfile)
+
 # Get a list of processes running on the server
 procs = subprocess.Popen(
     ['ps', '-A', '--noheaders', '-o', 'args'], stdout=subprocess.PIPE,
@@ -381,6 +396,17 @@ if '/usr/libexec/mysqld' in procs_output:
     run.run_command(['mysql', '-Bse', 'show databases;'],
                     'mysql_databases', fail_ok=True, sort=True)
 
+# Run any custom commands
+for section in Config.sections():
+    try:
+        cfgtype = Config.get(section, 'type')
+        if cfgtype == 'Command':
+            cmd = Config.get(section, 'command')
+            report_info("Running custom command %s: %s" % (section, cmd))
+            run.run_command(cmd.split(), section, fail_ok=True, sort=False)
+    except:
+        report_error("Check config file options for section %s" % section)
+
 # copy important files
 report_info("Copying files...")
 run.copy_file('/boot/grub/grub.conf', fail_ok=True)
@@ -402,6 +428,17 @@ for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
     run.copy_file(filename, fail_ok=False)
 for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
     run.copy_file(filename, fail_ok=False)
+
+# copy custom files
+for section in Config.sections():
+    try:
+        cfgtype = Config.get(section, 'type')
+        if cfgtype == 'File':
+            cpfile = Config.get(section, 'file')
+            run.copy_file(cpfile, fail_ok=True)
+    except:
+        report_error("Check config file options for section %s" % section)
+
 report_info("\n")
 
 # php specifics
