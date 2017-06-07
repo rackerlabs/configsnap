@@ -53,7 +53,7 @@ class dataGather:
 
         if not os.path.exists(r_filename):
             if not fail_ok:
-                report_error("%s does not exist." % r_filename)
+                report_error(" %s does not exist" % r_filename)
             return
         filename = os.path.basename(r_filename)
         w_filename = os.path.join(destdir, "%s.%s" %
@@ -218,6 +218,7 @@ else:
 # Load custom collection list
 customcollectionfile = '/etc/configsnap/additional.conf'
 Config = ConfigParser.ConfigParser()
+
 if os.path.exists(customcollectionfile):
     # Check file is owned by root and not read/writable by anyone else
     st = os.stat(customcollectionfile)
@@ -228,6 +229,15 @@ if os.path.exists(customcollectionfile):
     else:
         # Only read in the config file if the above checks have passed
         Config.read(customcollectionfile)
+
+# Ensure each section has a valid Type
+for section in Config.sections():
+    if Config.has_option(section, 'type'):
+        if Config.get(section, 'type').lower() != "file" and Config.get(section, 'type').lower() != "command":
+            report_error("Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
+
+# Array to hold custom collection files and commands to compare
+additional_to_compare = []
 
 # Get a list of processes running on the server
 procs = subprocess.Popen(
@@ -399,13 +409,30 @@ if '/usr/libexec/mysqld' in procs_output:
 # Run any custom commands
 for section in Config.sections():
     try:
-        cfgtype = Config.get(section, 'type')
-        if cfgtype == 'Command':
+        cfgtype = Config.get(section, 'type').lower()
+        if cfgtype == 'command':
             cmd = Config.get(section, 'command')
+
+            # Optional options
+            if Config.has_option(section, 'failok') and Config.get(section, 'failok').lower() == "true":
+              failokcfg = True
+            # If failok is anything except true...
+            else:
+              failokcfg = False
+
+            if Config.has_option(section, 'sort') and Config.get(section, 'sort').lower() == "true":
+              sortcfg = True
+            # If sort is anything except true...
+            else:
+              sortcfg = False
+
+            if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
+              additional_to_compare.append(section)
+
             report_info("Running custom command %s: %s" % (section, cmd))
-            run.run_command(cmd.split(), section, fail_ok=True, sort=False)
-    except:
-        report_error("Check config file options for section %s" % section)
+            run.run_command(cmd.split(), section, fail_ok=failokcfg, sort=sortcfg)
+    except Exception, e:
+        report_error("Check config file options for section %s: %s" % (section, e))
 
 # copy important files
 report_info("Copying files...")
@@ -432,12 +459,23 @@ for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
 # copy custom files
 for section in Config.sections():
     try:
-        cfgtype = Config.get(section, 'type')
-        if cfgtype == 'File':
+        cfgtype = Config.get(section, 'type').lower()
+        if cfgtype == 'file':
             cpfile = Config.get(section, 'file')
-            run.copy_file(cpfile, fail_ok=True)
-    except:
-        report_error("Check config file options for section %s" % section)
+
+            # Optional options
+            if Config.has_option(section, 'failok') and Config.get(section, 'failok').lower() == "true":
+              failokcfg = True
+            # If failok is anything except true...
+            else:
+              failokcfg = False
+
+            if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
+              additional_to_compare.append(section)
+
+            run.copy_file(cpfile, fail_ok=failokcfg)
+    except Exception, e:
+        report_error("Check config file options for section %s: %s" % (section, e))
 
 report_info("\n")
 
@@ -486,13 +524,17 @@ if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
     if 'rollback' in phase:
         run.get_diff('packages')
 
-    for filename in ('lvs', 'pvs', 'vgs', 'powermt', 'omreport_version',
+    compare = [ 'lvs', 'pvs', 'vgs', 'powermt', 'omreport_version',
                      'omreport_memory', 'omreport_processors',
                      'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
                      'hpreport_server','hpreport_memory','hpreport_bios',
                      'hpreport_storage_controller','hpreport_storage_vdisk',
                      'hpreport_storage_pdisk', 'multipath', 'systemdinit',
-                     'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints'):
+                     'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints' ]
+
+    compare.extend(additional_to_compare)
+
+    for filename in compare:
         pre_filename = os.path.join(workdir,
                                     "%s.pre" % filename)
         if os.path.exists(pre_filename):
