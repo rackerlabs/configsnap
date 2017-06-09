@@ -17,12 +17,15 @@ with a previous state and identify changes
 %setup -q
 
 %build
-help2man --no-info ./%{name} -o %{name}.man
+help2man --include=%{name}.help2man --no-info ./%{name} -o %{name}.man
 
 %install
-mkdir -p %{buildroot}%{_bindir} %{buildroot}%{_mandir}/man1
+mkdir -p %{buildroot}%{_bindir} \
+  %{buildroot}%{_mandir}/man1 \
+  %{buildroot}%{_sysconfdir}/%{name}
 install -p -m 0755 %{name} %{buildroot}%{_bindir}
 install -p -m 0644 %{name}.man %{buildroot}%{_mandir}/man1/%{name}.1
+install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional.conf
 
 %files
 %defattr(-,root,root,-)
@@ -33,6 +36,7 @@ install -p -m 0644 %{name}.man %{buildroot}%{_mandir}/man1/%{name}.1
 %doc MAINTAINERS.md
 %{_mandir}/man1/%{name}.1*
 %{_bindir}/%{name}
+%{_sysconfdir}/%{name}
 
 %changelog
 * Wed Dec 21 2016 Piers Cornwell <piers.cornwell@rackspace.co.uk> 0.11-1

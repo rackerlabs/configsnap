@@ -51,3 +51,17 @@ Copying files...
 
 Finished! Backups were saved to /root/junepatching/configsnap/*.pre
 ```
+
+Custom collection of additional command output (Type: command) and files (Type: file) can be configured in the file /etc/configsnap/additional.conf, for example:
+
+```
+[psspecial]
+Type: command
+Command: /bin/ps -aux
+
+[debconf.conf]
+Type: file
+File: /etc/debconf.conf
+```
+
+This will result in files psspecial.phase and debconf.conf.phase.
