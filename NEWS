@@ -1,5 +1,15 @@
 configsnap NEWS
 
+0.12
+ * Record Pacemaker status
+ * Don't raise exception if command doesn't exist
+ * Add alternative path for lspci
+ * Allow MySQL show databases to fail
+ * Record PHP state
+ * Record iptables rules
+ * Documented tested platforms
+ * Optional custom collection
+
 0.11
  * Renamed from getData to configsnap
  * Backup grubenv for grub2

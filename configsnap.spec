@@ -39,6 +39,16 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
+* Mon Jun 12 2017 Piers Cornwell <piers.cornwell@rackspace.co.uk> 0.12-1
+- Record Pacemaker status
+- Don't raise exception if command doesn't exist
+- Add alternative path for lspci
+- Allow MySQL show databases to fail
+- Record PHP state
+- Record iptables rules
+- Documented tested platforms
+- Optional custom collection
+
 * Wed Dec 21 2016 Piers Cornwell <piers.cornwell@rackspace.co.uk> 0.11-1
 - Renamed from getData to configsnap
 - Backup grubenv for grub2
