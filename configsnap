@@ -480,7 +480,7 @@ for section in Config.sections():
 report_info("\n")
 
 # php specifics
-if os.path.exists('/etc/php.ini'):
+if os.path.exists('/usr/bin/php'):
     is_php_detected = True
     report_info("Copying PHP related files...")
     run.copy_file('/etc/php.ini', fail_ok=True)
