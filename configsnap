@@ -26,23 +26,31 @@ import difflib
 import glob
 import re
 
-version="0.12"
+version = "0.12"
+
 
 def report_verbose(message):
     if options.verbose_enabled:
         sys.stdout.write("\033[92m%s\n\033[0m" % message)
+
+
 def report_info(message):
     if not options.silent_enabled:
         sys.stdout.write("\033[92m%s\n\033[0m" % message)
+
+
 def report_info_blue(message):
     if not options.silent_enabled:
         sys.stdout.write("\033[1;34m%s\n\033[0m" % message)
+
+
 def report_error(message):
     if not options.silent_enabled:
         sys.stderr.write("\033[91m%s\n\033[0m" % message)
 
 diffs_found_msg = False
 is_php_detected = False
+
 
 class dataGather:
 
@@ -96,7 +104,8 @@ class dataGather:
         returncode = command_proc.wait()
 
         if not fail_ok and returncode != 0:
-            report_error("%s failed\nPlease troubleshoot manually" % (' '.join(command), ))
+            report_error("%s failed\nPlease troubleshoot manually" %
+                         (' '.join(command), ))
             return None
 
         if len(output) == 0:
@@ -145,17 +154,18 @@ class dataGather:
                 if not found_diff:
                     found_diff = True
                     diffs_found_msg = True
-                    report_error("Differences found against %s.pre:\n" % filename)
+                    report_error(
+                        "Differences found against %s.pre:\n" % filename)
                 sys.stdout.write(line)
 
         if not found_diff:
-           report_info("No differences against %s.pre" % filename)
+            report_info("No differences against %s.pre" % filename)
 
     def __init__(self, workdir, phase):
         self.workdir = workdir
         self.phase = phase
 
-desc='Record useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".'
+desc = 'Record useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".'
 
 parser = optparse.OptionParser(description=desc)
 parser.add_option("-v", "--verbose",
@@ -199,8 +209,8 @@ if not os.path.isdir(workdir):
 
 os.chdir(workdir)
 
-if not "PATH" in os.environ:
-  os.environ['PATH'] = '/usr/bin:/bin'
+if "PATH" not in os.environ:
+    os.environ['PATH'] = '/usr/bin:/bin'
 os.environ['PATH'] += ':/usr/sbin:/sbin'
 
 if options.phase:
@@ -208,7 +218,7 @@ if options.phase:
     for filename in os.listdir('.'):
         if filename.endswith(".%s" % phase):
             report_error("Files for %s already exist in %s" % (phase,
-	    	os.getcwd()))
+                                                               os.getcwd()))
             sys.exit(1)
 else:
     now = datetime.datetime.now()
@@ -223,9 +233,11 @@ if os.path.exists(customcollectionfile):
     # Check file is owned by root and not read/writable by anyone else
     st = os.stat(customcollectionfile)
     if st.st_uid != 0:
-        report_error("Custom collection file %s not owned by root, ignoring" % customcollectionfile)
+        report_error("Custom collection file %s not owned by root, ignoring" %
+                     customcollectionfile)
     elif oct(st.st_mode)[-2:] != '00':
-        report_error("Custom collection file %s is read or writable by non-root, ignoring" % customcollectionfile)
+        report_error("Custom collection file %s is read or writable by non-root, ignoring" %
+                     customcollectionfile)
     else:
         # Only read in the config file if the above checks have passed
         Config.read(customcollectionfile)
@@ -234,7 +246,8 @@ if os.path.exists(customcollectionfile):
 for section in Config.sections():
     if Config.has_option(section, 'type'):
         if Config.get(section, 'type').lower() != "file" and Config.get(section, 'type').lower() != "command":
-            report_error("Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
+            report_error(
+                "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
 
 # Array to hold custom collection files and commands to compare
 additional_to_compare = []
@@ -262,9 +275,9 @@ if os.path.exists('/sbin/lvs'):
     try:
         vgcfg = subprocess.Popen(['vgcfgbackup', '-f',
                                   os.path.join(workdir,
-                                  "vgcfgbackup-%%s.%s" % phase)],
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+                                               "vgcfgbackup-%%s.%s" % phase)],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
         vgcfg.wait()
     except:
         report_error("vgcfgbackup failed")
@@ -272,7 +285,8 @@ if os.path.exists('/sbin/lvs'):
         if vgcfg.returncode != 0:
             report_error("vgcfg exited with return code %d" % vgcfg.returncode)
 
-run.run_command(['parted', '-l', '-s'], 'partitions', fail_ok=False, sort=False)
+run.run_command(['parted', '-l', '-s'],
+                'partitions', fail_ok=False, sort=False)
 if os.path.exists('/etc/multipath.conf'):
     run.run_command(['multipath', '-l'], 'multipath', fail_ok=True, sort=False)
 if os.path.exists('/sbin/powermt'):
@@ -289,20 +303,26 @@ if os.path.exists('/bin/rpm'):
 if os.path.exists('/usr/bin/dpkg'):
     run.run_command(['dpkg', '-l'], 'packages', fail_ok=False, sort=False)
 if os.path.exists('/sbin/chkconfig'):
-    run.run_command(['chkconfig', '--list'], 'sysvinit', fail_ok=False, sort=True)
+    run.run_command(['chkconfig', '--list'],
+                    'sysvinit', fail_ok=False, sort=True)
 if os.path.exists('/usr/sbin/sysv-rc-conf'):
-    run.run_command(['sysv-rc-conf', '--list'], 'sysvinit', fail_ok=True, sort=True)
+    run.run_command(
+        ['sysv-rc-conf', '--list'], 'sysvinit', fail_ok=True, sort=True)
 if os.path.exists('/sbin/initctl'):
-    run.run_command(['initctl', 'list'], 'upstartinit', fail_ok=True, sort=True)
+    run.run_command(['initctl', 'list'],
+                    'upstartinit', fail_ok=True, sort=True)
 if os.path.exists('/usr/bin/systemctl'):
-    run.run_command(['systemctl', 'list-unit-files'], 'systemdinit', fail_ok=True, sort=False)
+    run.run_command(['systemctl', 'list-unit-files'],
+                    'systemdinit', fail_ok=True, sort=False)
 
-report_info("Getting network details, firewall rules and listening services...")
+report_info(
+    "Getting network details, firewall rules and listening services...")
 run.run_command(['ip', 'address', 'show'],
                 'ip_addresses', fail_ok=False, sort=False)
 run.run_command(['ip', 'route', 'show'],
                 'ip_routes', fail_ok=False, sort=False)
-run.run_command(['iptables', '--list-rules'], 'iptables', fail_ok=True, sort=False)
+run.run_command(['iptables', '--list-rules'],
+                'iptables', fail_ok=True, sort=False)
 run.run_command(
     "netstat -nutlp|awk -F'[ /]+' '/tcp/ {print $8,$1,$4}'|column -t",
     'netstat', fail_ok=False, sort=True, shell=True)
@@ -324,7 +344,7 @@ if os.path.exists('/sbin/lspci') or os.path.exists('/usr/bin/lspci'):
 
 run.run_command(['sysctl', '-a'], 'sysctl', fail_ok=True, sort=True)
 
-omreportpath='/opt/dell/srvadmin/bin/omreport'
+omreportpath = '/opt/dell/srvadmin/bin/omreport'
 if os.path.exists(omreportpath):
     report_info("Getting Dell hardware information...")
     run.run_command([omreportpath, 'chassis'],
@@ -353,9 +373,9 @@ if os.path.exists(omreportpath):
     run.run_command([omreportpath, 'storage', 'battery'],
                     'omreport_raidbattery', fail_ok=True, sort=False, stdout=False)
 
-hpasmpath='/sbin/hpasmcli'
-dmipath='/usr/sbin/dmidecode'
-hpstorutil=['/usr/sbin/hpssacli','/usr/sbin/hpacucli']
+hpasmpath = '/sbin/hpasmcli'
+dmipath = '/usr/sbin/dmidecode'
+hpstorutil = ['/usr/sbin/hpssacli', '/usr/sbin/hpacucli']
 if os.path.exists(hpasmpath):
     report_info("Getting HP hardware information...")
     run.run_command([hpasmpath, '-s', 'show server'],
@@ -386,10 +406,14 @@ if os.path.exists(hpasmpath):
                 m = re.search('lot ([0-9]+)', o)
                 if m:
                     run.run_command(
-                        [storutil, 'controller', "slot=%s" % m.group(1), 'logicaldrive', 'all', 'show', 'detail'],
+                        [storutil, 'controller', "slot=%s" %
+                            m.group(
+                                1), 'logicaldrive', 'all', 'show', 'detail'],
                         'hpreport_storage_vdisk', fail_ok=True, sort=False, stdout=False)
                     run.run_command(
-                        [storutil, 'controller', "slot=%s" % m.group(1), 'physicaldrive', 'all', 'show', 'detail'],
+                        [storutil, 'controller', "slot=%s" %
+                            m.group(
+                                1), 'physicaldrive', 'all', 'show', 'detail'],
                         'hpreport_storage_pdisk', fail_ok=True, sort=False, stdout=False)
                     break
             break
@@ -415,24 +439,26 @@ for section in Config.sections():
 
             # Optional options
             if Config.has_option(section, 'failok') and Config.get(section, 'failok').lower() == "true":
-              failokcfg = True
+                failokcfg = True
             # If failok is anything except true...
             else:
-              failokcfg = False
+                failokcfg = False
 
             if Config.has_option(section, 'sort') and Config.get(section, 'sort').lower() == "true":
-              sortcfg = True
+                sortcfg = True
             # If sort is anything except true...
             else:
-              sortcfg = False
+                sortcfg = False
 
             if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
-              additional_to_compare.append(section)
+                additional_to_compare.append(section)
 
             report_info("Running custom command %s: %s" % (section, cmd))
-            run.run_command(cmd.split(), section, fail_ok=failokcfg, sort=sortcfg)
+            run.run_command(
+                cmd.split(), section, fail_ok=failokcfg, sort=sortcfg)
     except Exception, e:
-        report_error("Check config file options for section %s: %s" % (section, e))
+        report_error(
+            "Check config file options for section %s: %s" % (section, e))
 
 # copy important files
 report_info("Copying files...")
@@ -465,17 +491,18 @@ for section in Config.sections():
 
             # Optional options
             if Config.has_option(section, 'failok') and Config.get(section, 'failok').lower() == "true":
-              failokcfg = True
+                failokcfg = True
             # If failok is anything except true...
             else:
-              failokcfg = False
+                failokcfg = False
 
             if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
-              additional_to_compare.append(section)
+                additional_to_compare.append(section)
 
             run.copy_file(cpfile, fail_ok=failokcfg)
     except Exception, e:
-        report_error("Check config file options for section %s: %s" % (section, e))
+        report_error(
+            "Check config file options for section %s: %s" % (section, e))
 
 report_info("\n")
 
@@ -495,7 +522,8 @@ if os.path.exists('/usr/bin/php'):
     run.run_command(
         ['php', '-i'], 'php_info', fail_ok=False, sort=False)
     if os.path.exists('/usr/bin/pecl'):
-        run.run_command(['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
+        run.run_command(
+            ['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
 
 if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
     # Check that there are pre files, and exit if there aren't
@@ -524,13 +552,13 @@ if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
     if 'rollback' in phase:
         run.get_diff('packages')
 
-    compare = [ 'lvs', 'pvs', 'vgs', 'powermt', 'omreport_version',
-                     'omreport_memory', 'omreport_processors',
-                     'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
-                     'hpreport_server','hpreport_memory','hpreport_bios',
-                     'hpreport_storage_controller','hpreport_storage_vdisk',
-                     'hpreport_storage_pdisk', 'multipath', 'systemdinit',
-                     'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints' ]
+    compare = ['lvs', 'pvs', 'vgs', 'powermt', 'omreport_version',
+               'omreport_memory', 'omreport_processors',
+               'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
+               'hpreport_server', 'hpreport_memory', 'hpreport_bios',
+               'hpreport_storage_controller', 'hpreport_storage_vdisk',
+               'hpreport_storage_pdisk', 'multipath', 'systemdinit',
+               'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints']
 
     compare.extend(additional_to_compare)
 
@@ -552,9 +580,12 @@ if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
 
     if diffs_found_msg:
         report_info_blue("\nINTERPRETING DIFFS:\n")
-        report_info_blue("* Lines beginning with a - show an entry from the .pre file which has changed\nor which is not present in the .post or .rollback file.\n")
-        report_info_blue("* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the .pre file.\n")
-        report_info_blue("Please review all diff output above carefully and account for any differences\nfound.\n")
+        report_info_blue(
+            "* Lines beginning with a - show an entry from the .pre file which has changed\nor which is not present in the .post or .rollback file.\n")
+        report_info_blue(
+            "* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the .pre file.\n")
+        report_info_blue(
+            "Please review all diff output above carefully and account for any differences\nfound.\n")
 
 # cleanup
 report_info("Finished! Backups were saved to %s/*.%s" % (workdir, phase))
