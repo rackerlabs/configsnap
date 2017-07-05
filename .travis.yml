@@ -6,5 +6,4 @@ install:
   - pip install pep8
 script:
   - "pep8 --ignore=E501 configsnap"
-  - "ls -R"
   - "sudo ./test_configsnap.py"
