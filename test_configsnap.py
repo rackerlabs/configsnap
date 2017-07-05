@@ -20,6 +20,7 @@ import inspect
 import os
 import re
 import subprocess
+import sys
 
 class TestResult:
 
@@ -42,10 +43,15 @@ class TestResult:
 class FunctionalTests:
 
     cwd = os.path.dirname(os.path.realpath(__file__))
+    failurecount = 0
 
     def whoami(self):
         """Return the calling function's name"""
         return inspect.stack()[1][3]
+
+    def failtest(self, test, text):
+        print ("%s FAIL %s" % (test, text))
+        self.failurecount += 1
 
     def run_command(self, command):
         """Run a command and return output and exit code
@@ -69,18 +75,18 @@ class FunctionalTests:
         test = self.whoami()
         o = self.run_command('./configsnap -d /tmp/test -t functests')
         if o.retcode is not 0:
-            print ("%s FAIL Exit code non-zero" % test)
+            self.failtest(test, "Exit code non-zero")
         else:
             print ("%s PASS Exit code zero" % test)
 
         # Check that custom dir was created and has content
         if not os.path.isdir('/tmp/test'):
-            print ("%s FAIL Custom dir doesn't exist" % test)
+            self.failtest(test, "Custom dir doesn't exist")
         else:
             print ("%s PASS Custom dir exists" % test)
 
         if len(os.listdir('/tmp/test')) < 1:
-            print ("%s FAIL No files in custom dir" % test)
+            self.failtest(test, "No files in custom dir")
         else:
             print ("%s PASS Files in custom dir" % test)
 
@@ -94,6 +100,11 @@ def main():
     for function in functions:
       if function.startswith('func'):
           getattr(f, function)()
+
+    print ("Tests complete; failures: %s" % f.failurecount)
+
+    if f.failurecount != 0:
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
