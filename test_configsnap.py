@@ -79,16 +79,21 @@ class FunctionalTests:
         else:
             print ("%s PASS Custom dir exists" % test)
 
+        if len(os.listdir('/tmp/test')) < 1:
+            print ("%s FAIL No files in custom dir" % test)
+        else:
+            print ("%s PASS Files in custom dir" % test)
+
     def func2_tag(self):
         """Customised tag; -t command line option"""
         ret = self.run_command('./configsnap -t randomalternativetag')
 
 def main():
     f = FunctionalTests()
-    # Something to get all functions named func* from object f
-    f.func1_dir()
-    f.func2_tag()
-    dir(f)
+    functions = dir(f)
+    for function in functions:
+      if function.startswith('func'):
+          getattr(f, function)()
 
 if __name__ == "__main__":
     main()
