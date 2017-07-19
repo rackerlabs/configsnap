@@ -25,6 +25,7 @@ import datetime
 import difflib
 import glob
 import re
+import shutil
 
 version = "0.12"
 
@@ -47,6 +48,28 @@ def report_info_blue(message):
 def report_error(message):
     if not options.silent_enabled:
         sys.stderr.write("\033[91m%s\n\033[0m" % message)
+
+
+def create_dir(tagdir, overwrite):
+    workdir = os.path.join(tagdir, "configsnap")
+
+    if os.path.isdir(workdir) and overwrite:
+           report_info("%s exists. Overwrite (-w/--overwrite) enabled so removing." % workdir)
+           try:
+               shutil.rmtree(workdir)
+           except OSError, e:
+               report_error("Unable to remove %s: %s" % (workdir, e))
+               sys.exit(1)
+
+    if not os.path.isdir(workdir):
+        try:
+            os.makedirs(workdir)
+        except OSError, e:
+            report_error("Unable to create %s" % (workdir, e))
+            sys.exit(1)
+
+    return workdir
+
 
 diffs_found_msg = False
 is_php_detected = False
@@ -168,6 +191,9 @@ class dataGather:
 desc = 'Record useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".'
 
 parser = optparse.OptionParser(description=desc)
+parser.add_option('-w', '--overwrite', 
+                  action="store_true", dest="overwrite_enabled", default=False,
+                  help='if tag dir already exists, remove previously collected data')
 parser.add_option("-v", "--verbose",
                   action="store_true", dest="verbose_enabled", default=False,
                   help="print debug info")
@@ -199,14 +225,7 @@ if not options.tag:
     sys.exit(1)
 
 tagdir = os.path.join(options.basedir, options.tag)
-workdir = os.path.join(tagdir, "configsnap")
-
-if not os.path.isdir(workdir):
-    try:
-        os.makedirs(workdir)
-    except OSError:
-        report_error("Unable to create %s" % workdir)
-
+workdir = create_dir(tagdir, options.overwrite_enabled)
 os.chdir(workdir)
 
 if "PATH" not in os.environ:
