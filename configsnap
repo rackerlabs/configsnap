@@ -26,8 +26,12 @@ import difflib
 import glob
 import re
 import shutil
+import tarfile
+
 
 version = "0.12"
+diffs_found_msg = False
+is_php_detected = False
 
 
 def report_verbose(message):
@@ -71,9 +75,22 @@ def create_dir(tagdir, overwrite):
 
     return workdir
 
+def create_archive(tagdir, workdir, tag, overwrite):
+     """Create tar archive of workdir and return filename and success"""
+     output_filename = "%s/configsnap-%s.tar.gz" % (tagdir, tag)
 
-diffs_found_msg = False
-is_php_detected = False
+     if os.path.isfile(output_filename):
+         if overwrite:
+             report_info(
+                 "%s exists. Overwrite (-w/--overwrite) enabled so will overwrite." % output_filename)
+         else:
+             report_error("Archive file %s already exists. Use -w overwrite." % output_filename)
+             return "", False
+
+     with tarfile.open(output_filename, "w:gz") as tar:
+         tar.add(workdir, arcname=os.path.basename(workdir))
+
+     return output_filename, True
 
 
 class dataGather:
@@ -195,6 +212,9 @@ parser = optparse.OptionParser(description=desc)
 parser.add_option('-w', '--overwrite',
                   action="store_true", dest="overwrite_enabled", default=False,
                   help='if tag dir already exists, remove previously collected data')
+parser.add_option('-a', '--archive',
+                  action="store_true", dest="archive_enabled", default=False,
+                  help='pack output files into a tar archive')
 parser.add_option("-v", "--verbose",
                   action="store_true", dest="verbose_enabled", default=False,
                   help="print debug info")
@@ -607,5 +627,9 @@ if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
         report_info_blue(
             "Please review all diff output above carefully and account for any differences\nfound.\n")
 
-# cleanup
+if options.archive_enabled:
+    archive_location, success = create_archive(tagdir, workdir, options.tag, options.overwrite_enabled)
+    if success:
+        report_info("Archive saved to %s" % archive_location)
+
 report_info("Finished! Backups were saved to %s/*.%s" % (workdir, phase))
