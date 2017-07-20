@@ -9,6 +9,8 @@ Usage: configsnap [options]
 
 Options:
   -h, --help            show this help message and exit
+  -w, --overwrite       if tag dir already exists, remove previously collected
+                        data
   -v, --verbose         print debug info
   -V, --version         print version
   -s, --silent          no output to stdout
