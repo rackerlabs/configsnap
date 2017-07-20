@@ -22,14 +22,15 @@ import re
 import subprocess
 import sys
 
+
 class TestResult:
 
     def __init__(self, stdout, stderr, retcode):
-       # Remove ANSI color escape sequences from text
-       ansi_escape = re.compile(r'\x1b[^m]*m')
-       self.stdout = ansi_escape.sub('', stdout)
-       self.stderr = ansi_escape.sub('', stderr)
-       self.retcode = retcode
+        # Remove ANSI color escape sequences from text
+        ansi_escape = re.compile(r'\x1b[^m]*m')
+        self.stdout = ansi_escape.sub('', stdout)
+        self.stderr = ansi_escape.sub('', stderr)
+        self.retcode = retcode
 
     def stdout(self):
         print self.stdout
@@ -39,6 +40,7 @@ class TestResult:
 
     def retcode(self):
         print self.retcode
+
 
 class FunctionalTests:
 
@@ -63,14 +65,15 @@ class FunctionalTests:
             list: stdout, stderr, exitcode
         """
 
-        command_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=self.cwd)
+        command_proc = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=self.cwd)
         output = command_proc.stdout.read()
         error = command_proc.stderr.read()
         returncode = command_proc.wait()
 
         return TestResult(output, error, returncode)
 
-    def func1_dir(self):
+    def func1_customdir(self):
         """Customised output directory; -d commandline option"""
         test = self.whoami()
         o = self.run_command('./configsnap -d /tmp/test -t functests')
@@ -90,16 +93,59 @@ class FunctionalTests:
         else:
             print ("%s PASS Files in custom dir" % test)
 
-    def func2_tag(self):
+    def func2_customtag(self):
         """Customised tag; -t command line option"""
-        ret = self.run_command('./configsnap -t randomalternativetag')
+        test = self.whoami()
+        o = self.run_command('./configsnap -t randomalternativetag')
+        if o.retcode is not 0:
+            self.failtest(test, "Exit code non-zero")
+        else:
+            print ("%s PASS Exit code zero" % test)
+
+        # Check tag name on dir
+        if os.path.exists('/root/randomalternativetag'):
+            print ("%s PASS alternative tag dir exists" % test)
+        else:
+            self.failtest(test, "Alternative tag dir doesn't exist")
+
+        if len(os.listdir('/root/randomalternativetag/configsnap')) < 1:
+            self.failtest(test, "No files in collection dir")
+        else:
+            print ("%s PASS Files in collection dir" % test)
+
+    def func3_overwrite(self):
+        """Overwrite workdir; -w command line option"""
+        test = self.whoami()
+        for i in range(1, 4):
+            o = self.run_command('./configsnap -t overwrite -p pre -w')
+            if o.retcode is not 0:
+                self.failtest(test, "Exit code non-zero, run %i" % i)
+            else:
+                print ("%s PASS Exit code zero, run %i" % (test, i))
+
+    def func4_error_handling_nooverwrite(self):
+        """Don't overwrite by default"""
+        test = self.whoami()
+        o = self.run_command('./configsnap -t nooverwrite -p pre')
+        if o.retcode is not 0:
+            self.failtest(test, "Exit code non-zero, initial run")
+        else:
+            print ("%s PASS Exit code zero, initial run" % test)
+
+        o = self.run_command('./configsnap -t nooverwrite -p pre')
+        if o.retcode is not 1:
+            print o.retcode
+            self.failtest(test, "Exit code not 1, second run")
+        else:
+            print ("%s PASS Exit code 1, didn't overwrite, second run" % test)
+
 
 def main():
     f = FunctionalTests()
     functions = dir(f)
     for function in functions:
-      if function.startswith('func'):
-          getattr(f, function)()
+        if function.startswith('func'):
+            getattr(f, function)()
 
     print ("Tests complete; failures: %s" % f.failurecount)
 
