@@ -89,8 +89,13 @@ def create_archive(tagdir, workdir, tag, overwrite):
                 "Archive file %s already exists. Use -w overwrite." % output_filename)
             return "", False
 
-    with tarfile.open(output_filename, "w:gz") as tar:
+    try:
+        tar = tarfile.open(output_filename, "w:gz")
         tar.add(workdir, arcname=os.path.basename(workdir))
+        tar.close()
+    except IOError, e:
+        report_error("Can't create archive %s: %s" % (output_filename, e))
+        sys.exit(1)
 
     return output_filename, True
 
