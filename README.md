@@ -7,10 +7,14 @@ Tested on RHEL, CentOS, Fedora and Ubuntu, but should also work on other derivat
 ```
 Usage: configsnap [options]
 
+Record useful system state information, and compare to previous state if run
+with PHASE containing "post" or "rollback".
+
 Options:
   -h, --help            show this help message and exit
   -w, --overwrite       if tag dir already exists, remove previously collected
                         data
+  -a, --archive         pack output files into a tar archive
   -v, --verbose         print debug info
   -V, --version         print version
   -s, --silent          no output to stdout

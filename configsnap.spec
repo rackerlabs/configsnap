@@ -1,5 +1,5 @@
 Name:          configsnap
-Version:       0.12
+Version:       0.13
 Release:       1%{?dist}
 Summary:       Record and compare system state
 License:       ASL 2.0
@@ -20,10 +20,10 @@ with a previous state and identify changes
 help2man --include=%{name}.help2man --no-info ./%{name} -o %{name}.man
 
 %install
-mkdir -p %{buildroot}%{_bindir} \
+mkdir -p %{buildroot}%{_sbindir} \
   %{buildroot}%{_mandir}/man1 \
   %{buildroot}%{_sysconfdir}/%{name}
-install -p -m 0755 %{name} %{buildroot}%{_bindir}
+install -p -m 0755 %{name} %{buildroot}%{_sbindir}
 install -p -m 0644 %{name}.man %{buildroot}%{_mandir}/man1/%{name}.1
 install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional.conf
 
@@ -34,11 +34,18 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %doc README.md
 %doc NEWS
 %doc MAINTAINERS.md
+%config(noreplace) %{_sysconfdir}/%{name}/additional.conf
 %{_mandir}/man1/%{name}.1*
-%{_bindir}/%{name}
+%{_sbindir}/%{name}
 %{_sysconfdir}/%{name}
 
 %changelog
+* Thu Aug 17 2017 Piers Cornwell <piers.cornwell@rackspace.co.uk> 0.13.1
+- New option -a to create a tar archive of the output
+- New option -w to overwrite existing output
+- PEP8 fixes
+- Modify check for PHP presence
+
 * Mon Jun 12 2017 Piers Cornwell <piers.cornwell@rackspace.co.uk> 0.12-1
 - Record Pacemaker status
 - Don't raise exception if command doesn't exist
