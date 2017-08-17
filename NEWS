@@ -1,5 +1,11 @@
 configsnap NEWS
 
+0.13
+ * New option -a to create a tar archive of the output
+ * New option -w to overwrite existing output
+ * PEP8 fixes
+ * Modify check for PHP presence
+
 0.12
  * Record Pacemaker status
  * Don't raise exception if command doesn't exist

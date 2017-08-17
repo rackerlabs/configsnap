@@ -29,7 +29,7 @@ import shutil
 import tarfile
 
 
-version = "0.12"
+version = "0.13"
 diffs_found_msg = False
 is_php_detected = False
 
