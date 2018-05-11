@@ -29,7 +29,7 @@ import shutil
 import tarfile
 
 
-version = "0.13"
+version = "0.14"
 diffs_found_msg = False
 is_php_detected = False
 
@@ -63,12 +63,14 @@ def check_option_conflicts(options):
 
 def create_dir(tagdir, overwrite):
     workdir = os.path.join(tagdir, "configsnap")
-
     if os.path.isdir(workdir) and overwrite:
-        report_info(
-            "%s exists. Overwrite (-w/--overwrite) enabled so removing." % workdir)
         try:
-            shutil.rmtree(workdir)
+            if any(options.phase in s for s in os.listdir(workdir)):
+                report_info(
+                    "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, workdir))
+                for reportfile in os.listdir(workdir):
+                    if options.phase in reportfile:
+                        os.remove(os.path.join(workdir, reportfile))
         except OSError, e:
             report_error("Unable to remove %s: %s" % (workdir, e))
             sys.exit(1)
@@ -225,7 +227,7 @@ desc = 'Record useful system state information, and compare to previous state if
 parser = optparse.OptionParser(description=desc)
 parser.add_option('-w', '--overwrite',
                   action="store_true", dest="overwrite_enabled", default=False,
-                  help='if tag dir already exists, remove previously collected data')
+                  help='if phase files already exist in tag dir, remove previously collected data with that tag')
 parser.add_option('-a', '--archive',
                   action="store_true", dest="archive_enabled", default=False,
                   help='pack output files into a tar archive')
