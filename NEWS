@@ -1,5 +1,8 @@
 configsnap NEWS
 
+0.14
+ * Adjusted -w option to only overwrite specific tagged files
+
 0.13
  * New option -a to create a tar archive of the output
  * New option -w to overwrite existing output

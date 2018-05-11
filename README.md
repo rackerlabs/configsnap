@@ -12,8 +12,8 @@ with PHASE containing "post" or "rollback".
 
 Options:
   -h, --help            show this help message and exit
-  -w, --overwrite       if tag dir already exists, remove previously collected
-                        data
+  -w, --overwrite       if phase files already exist in tag dir, remove
+                        previously collected data with that tag
   -a, --archive         pack output files into a tar archive
   -v, --verbose         print debug info
   -V, --version         print version
