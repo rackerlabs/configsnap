@@ -127,7 +127,8 @@ def create_archive(tagdir, workdir, tag, overwrite):
 
     return output_filename, True
 
-def compare_files() :
+
+def compare_files():
     # Check that there are pre files, and exit if there aren't
     found_pre = False
     run = dataGather(workdir, phase)
@@ -179,7 +180,7 @@ def compare_files() :
 
     for filename in compare:
         pre_filename = os.path.join(workdir,
-                                    "%s.%s" % (filename,options.pre_suffix))
+                                    "%s.%s" % (filename, options.pre_suffix))
         if os.path.exists(pre_filename):
             run.get_diff(filename)
 
@@ -205,6 +206,7 @@ def compare_files() :
             "* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the " + options.pre_suffix + " pre file.\n")
         report_info_blue(
             "Please review all diff output above carefully and account for any differences\nfound.\n")
+
 
 class dataGather:
 
@@ -356,9 +358,6 @@ parser.add_option('-C', '--compare-only',
 parser.add_option('--pre',
                   dest='pre_suffix', default='pre',
                   help='suffix for files captured at previous state, for comparison')
-#parser.add_option('--post',
-#                  dest='post_suffix', default='post',
-#                  help='suffix for files captured after change, for comparison')
 
 (options, args) = parser.parse_args()
 
@@ -691,8 +690,6 @@ if os.path.exists('/usr/bin/php'):
     if os.path.exists('/usr/bin/pecl'):
         run.run_command(
             ['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
-
-
 
 if ('post' in phase or 'rollback' in phase or options.force_compare) and not options.silent_enabled:
     compare_files()
