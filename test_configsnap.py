@@ -144,8 +144,9 @@ class FunctionalTests:
 def main():
     """Clean root directory test files"""
     for test_dir in ["nooverwrite", "overwrite", "randomalternativetag"]:
-        print("deleting /root/" + test_dir)
-        shutil.rmtree(os.path.join("/root/", test_dir))
+        if os.path.isdir(os.path.join("/root/", test_dir)):
+            print("deleting /root/" + test_dir)
+            shutil.rmtree(os.path.join("/root/", test_dir))
 
     f = FunctionalTests()
     functions = dir(f)
