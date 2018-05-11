@@ -341,7 +341,7 @@ parser.add_option("-s", "--silent",
                   help="no output to stdout")
 parser.add_option("--force-compare",
                   action="store_true", dest="force_compare", default=False,
-                  help="no output to stdout")
+                  help="Force a comparison after collecting data")
 parser.add_option('-t', '--tag',
                   dest='tag',
                   help='tag identifer (e.g. a ticket number)')
