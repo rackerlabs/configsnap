@@ -55,10 +55,29 @@ def report_error(message):
 
 
 def check_option_conflicts(options):
+    # Do not allow silent and verbose options to be used in conjunction
     if options.silent_enabled is True and options.verbose_enabled is True:
         options.silent_enabled = False
         report_error("Conflicting options provided: '-v' and '-s' are not compatible")
         sys.exit(1)
+
+    # Do not allow archive or overwrite to be used in conjunction with compare-only
+    if options.compare_only is True:
+        conflicts = [options.silent_enabled is True,
+                     options.archive_enabled is True,
+                     options.overwrite_enabled is True]
+
+        try:
+            requires = [options.phase is not None,
+                        options.pre_suffix is not None]
+        except:
+            report_error("--phase or --pre not set")
+            sys.exit(1)
+
+        if any(conflicts):
+            options.silent_enabled = False
+            report_error("Conflicting options provided: '-a', '-s' and '-w' conflict with '-C'")
+            sys.exit(1)
 
 
 def create_dir(tagdir, overwrite):
@@ -108,6 +127,84 @@ def create_archive(tagdir, workdir, tag, overwrite):
 
     return output_filename, True
 
+def compare_files() :
+    # Check that there are pre files, and exit if there aren't
+    found_pre = False
+    run = dataGather(workdir, phase)
+
+    for filename in os.listdir(workdir):
+        if filename.endswith(options.pre_suffix):
+            found_pre = True
+    if not found_pre:
+        report_error("Unable to diff, as no " + options.pre_suffix + " pre files")
+        sys.exit(0)
+
+    report_info("This is  %s  phase so performing diffs..." % phase)
+
+    for filename in ('sysvinit', 'mounts', 'netstat', 'ip_addresses',
+                     'ip_routes', 'partitions', 'lspci'):
+        run.get_diff(filename)
+
+    if is_php_detected:
+        run.get_diff('php.ini')
+        if os.path.exists('/usr/bin/pecl'):
+            run.get_diff('pecl-list')
+        for filename in glob.glob(os.path.join(workdir, "php.d/*" + options.pre_suffix)):
+            filename = str.replace(filename, "." + options.pre_suffix, "")
+            run.get_diff(filename)
+
+    if 'rollback' in phase:
+        run.get_diff('packages')
+
+    compare = ['lvs', 'pvs', 'vgs', 'powermt', 'omreport_version',
+               'omreport_memory', 'omreport_processors',
+               'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
+               'hpreport_server', 'hpreport_memory', 'hpreport_bios',
+               'hpreport_storage_controller', 'hpreport_storage_vdisk',
+               'hpreport_storage_pdisk', 'multipath', 'systemdinit',
+               'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints']
+
+    # Array to hold custom collection files and commands to compare
+    additional_to_compare = []
+    for section in Config.sections():
+        try:
+            cfgtype = Config.get(section, 'type').lower()
+            if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
+                additional_to_compare.append(section)
+        except Exception, e:
+            report_error(
+                "Check config file options for section %s: %s" % (section, e))
+
+    compare.extend(additional_to_compare)
+
+    for filename in compare:
+        pre_filename = os.path.join(workdir,
+                                    "%s.%s" % (filename,options.pre_suffix))
+        if os.path.exists(pre_filename):
+            run.get_diff(filename)
+
+    try:
+        uname_pre_fd = open(
+            os.path.join(workdir, 'uname.' + options.pre_suffix), 'r')
+        uname_post_fd = open(
+            os.path.join(workdir, "uname.%s" % phase), 'r')
+        uname_pre = uname_pre_fd.read().strip()
+        uname_post = uname_post_fd.read().strip()
+        if uname_pre != uname_post:
+            sys.stdout.write("Old uname: %s. New uname: %s\n" %
+                             (uname_pre, uname_post))
+    except Exception, e:
+        report_error(
+            "Unable to open file %s: %s" % ((e.filename, e.strerror)))
+
+    if diffs_found_msg:
+        report_info_blue("\nINTERPRETING DIFFS:\n")
+        report_info_blue(
+            "* Lines beginning with a - show an entry from the " + options.pre_suffix + " pre file which has changed\nor which is not present in the .post or .rollback file.\n")
+        report_info_blue(
+            "* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the " + options.pre_suffix + " pre file.\n")
+        report_info_blue(
+            "Please review all diff output above carefully and account for any differences\nfound.\n")
 
 class dataGather:
 
@@ -191,7 +288,7 @@ class dataGather:
     def get_diff(self, filename):
         global diffs_found_msg
         filename = os.path.join(self.workdir, filename)
-        pre_filename = "%s.pre" % filename
+        pre_filename = "%s.%s" % (filename, options.pre_suffix)
         post_filename = "%s.%s" % (filename, self.phase)
         try:
             pre_fd = open(pre_filename)
@@ -212,11 +309,11 @@ class dataGather:
                     found_diff = True
                     diffs_found_msg = True
                     report_error(
-                        "Differences found against %s.pre:\n" % filename)
+                        "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
                 sys.stdout.write(line)
 
         if not found_diff:
-            report_info("No differences against %s.pre" % filename)
+            report_info("No differences against %s.%s" % (filename, options.pre_suffix))
 
     def __init__(self, workdir, phase):
         self.workdir = workdir
@@ -240,13 +337,29 @@ parser.add_option("-V", "--version",
 parser.add_option("-s", "--silent",
                   action="store_true", dest="silent_enabled", default=False,
                   help="no output to stdout")
-parser.add_option('-t', '--tag', dest='tag',
+parser.add_option("--force-compare",
+                  action="store_true", dest="force_compare", default=False,
+                  help="no output to stdout")
+parser.add_option('-t', '--tag',
+                  dest='tag',
                   help='tag identifer (e.g. a ticket number)')
-parser.add_option('-d', '--basedir', dest='basedir', default='/root',
+parser.add_option('-d', '--basedir',
+                  dest='basedir', default='/root',
                   help='base directory to store output')
-parser.add_option('-p', '--phase', dest='phase',
+parser.add_option('-p', '--phase',
+                  dest='phase',
                   help='phase this is being used for. '
                        'Can be any string. Phases containing  post  or  rollback  will perform diffs')
+parser.add_option('-C', '--compare-only',
+                  action="store_true", dest='compare_only', default=False,
+                  help='Compare existing files with tags specified with --pre and --phase')
+parser.add_option('--pre',
+                  dest='pre_suffix', default='pre',
+                  help='suffix for files captured at previous state, for comparison')
+#parser.add_option('--post',
+#                  dest='post_suffix', default='post',
+#                  help='suffix for files captured after change, for comparison')
+
 (options, args) = parser.parse_args()
 
 if options.print_version:
@@ -274,7 +387,7 @@ os.environ['PATH'] += ':/usr/sbin:/sbin'
 if options.phase:
     phase = options.phase
     for filename in os.listdir('.'):
-        if filename.endswith(".%s" % phase):
+        if filename.endswith(".%s" % phase) and not options.compare_only:
             report_error("Files for %s already exist in %s" % (phase,
                                                                os.getcwd()))
             sys.exit(1)
@@ -286,6 +399,11 @@ else:
 # Load custom collection list
 customcollectionfile = '/etc/configsnap/additional.conf'
 Config = ConfigParser.ConfigParser()
+
+if options.compare_only:
+    report_info("Comparing files from phases: %s and %s" % (options.pre_suffix, options.phase))
+    compare_files()
+    sys.exit(0)
 
 if os.path.exists(customcollectionfile):
     # Check file is owned by root and not read/writable by anyone else
@@ -306,9 +424,6 @@ for section in Config.sections():
         if Config.get(section, 'type').lower() != "file" and Config.get(section, 'type').lower() != "command":
             report_error(
                 "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
-
-# Array to hold custom collection files and commands to compare
-additional_to_compare = []
 
 # Get a list of processes running on the server
 procs = subprocess.Popen(
@@ -508,9 +623,6 @@ for section in Config.sections():
             else:
                 sortcfg = False
 
-            if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
-                additional_to_compare.append(section)
-
             report_info("Running custom command %s: %s" % (section, cmd))
             run.run_command(
                 cmd.split(), section, fail_ok=failokcfg, sort=sortcfg)
@@ -554,9 +666,6 @@ for section in Config.sections():
             else:
                 failokcfg = False
 
-            if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
-                additional_to_compare.append(section)
-
             run.copy_file(cpfile, fail_ok=failokcfg)
     except Exception, e:
         report_error(
@@ -583,67 +692,11 @@ if os.path.exists('/usr/bin/php'):
         run.run_command(
             ['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
 
-if ('post' in phase or 'rollback' in phase) and not options.silent_enabled:
-    # Check that there are pre files, and exit if there aren't
-    found_pre = False
-    for filename in os.listdir(workdir):
-        if filename.endswith('pre'):
-            found_pre = True
-    if not found_pre:
-        report_error("Unable to diff, as no pre files")
-        sys.exit(0)
 
-    report_info("This is  %s  phase so performing diffs..." % phase)
 
-    for filename in ('sysvinit', 'mounts', 'netstat', 'ip_addresses',
-                     'ip_routes', 'partitions', 'lspci'):
-        run.get_diff(filename)
+if ('post' in phase or 'rollback' in phase or options.force_compare) and not options.silent_enabled:
+    compare_files()
 
-    if is_php_detected:
-        run.get_diff('php.ini')
-        if os.path.exists('/usr/bin/pecl'):
-            run.get_diff('pecl-list')
-        for filename in glob.glob(os.path.join(workdir, "php.d/*pre")):
-            filename = str.replace(filename, ".pre", "")
-            run.get_diff(filename)
-
-    if 'rollback' in phase:
-        run.get_diff('packages')
-
-    compare = ['lvs', 'pvs', 'vgs', 'powermt', 'omreport_version',
-               'omreport_memory', 'omreport_processors',
-               'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
-               'hpreport_server', 'hpreport_memory', 'hpreport_bios',
-               'hpreport_storage_controller', 'hpreport_storage_vdisk',
-               'hpreport_storage_pdisk', 'multipath', 'systemdinit',
-               'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints']
-
-    compare.extend(additional_to_compare)
-
-    for filename in compare:
-        pre_filename = os.path.join(workdir,
-                                    "%s.pre" % filename)
-        if os.path.exists(pre_filename):
-            run.get_diff(filename)
-
-    uname_pre_fd = open(
-        os.path.join(workdir, 'uname.pre'), 'r')
-    uname_post_fd = open(
-        os.path.join(workdir, "uname.%s" % phase), 'r')
-    uname_pre = uname_pre_fd.read().strip()
-    uname_post = uname_post_fd.read().strip()
-    if uname_pre != uname_post:
-        sys.stdout.write("Old uname: %s. New uname: %s\n" %
-                         (uname_pre, uname_post))
-
-    if diffs_found_msg:
-        report_info_blue("\nINTERPRETING DIFFS:\n")
-        report_info_blue(
-            "* Lines beginning with a - show an entry from the .pre file which has changed\nor which is not present in the .post or .rollback file.\n")
-        report_info_blue(
-            "* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the .pre file.\n")
-        report_info_blue(
-            "Please review all diff output above carefully and account for any differences\nfound.\n")
 
 if options.archive_enabled:
     archive_location, success = create_archive(
