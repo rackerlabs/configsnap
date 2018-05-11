@@ -54,6 +54,13 @@ def report_error(message):
         sys.stderr.write("\033[91m%s\n\033[0m" % message)
 
 
+def check_option_conflicts(options):
+    if options.silent_enabled is True and options.verbose_enabled is True:
+        options.silent_enabled = False
+        report_error("Conflicting options provided: '-v' and '-s' are not compatible")
+        sys.exit(1)
+
+
 def create_dir(tagdir, overwrite):
     workdir = os.path.join(tagdir, "configsnap")
 
@@ -251,6 +258,8 @@ if os.geteuid() != 0:
 if not options.tag:
     report_error("No tag given, exiting")
     sys.exit(1)
+
+check_option_conflicts(options)
 
 tagdir = os.path.join(options.basedir, options.tag)
 workdir = create_dir(tagdir, options.overwrite_enabled)
