@@ -102,7 +102,7 @@ def create_dir(tagdir, overwrite):
         try:
             if any(options.phase in s for s in os.listdir(workdir)):
                 reporter.log('info_green',
-                    "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, workdir))
+                             "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, workdir))
                 for reportfile in os.listdir(workdir):
                     if options.phase in reportfile:
                         os.remove(os.path.join(workdir, reportfile))
@@ -127,10 +127,10 @@ def create_archive(tagdir, workdir, tag, overwrite):
     if os.path.isfile(output_filename):
         if overwrite:
             reporter.log('info_green',
-                "%s exists. Overwrite (-w/--overwrite) enabled so will overwrite." % output_filename)
+                         "%s exists. Overwrite (-w/--overwrite) enabled so will overwrite." % output_filename)
         else:
             reporter.log('error',
-                "Archive file %s already exists. Use -w overwrite." % output_filename)
+                         "Archive file %s already exists. Use -w overwrite." % output_filename)
             return "", False
 
     try:
@@ -188,7 +188,7 @@ def compare_files():
                 additional_to_compare.append(section)
         except Exception, e:
             reporter.log('error',
-                "Check config file options for section %s: %s" % (section, e))
+                         "Check config file options for section %s: %s" % (section, e))
 
     report_list.extend(additional_to_compare)
 
@@ -209,19 +209,19 @@ def compare_files():
         uname_post = uname_post_fd.read().strip()
         if uname_pre != uname_post:
             reporter.log('info', "Old uname: %s. New uname: %s\n" %
-                             (uname_pre, uname_post))
+                         (uname_pre, uname_post))
     except Exception, e:
         reporter.log('error',
-            "Unable to open file %s: %s" % ((e.filename, e.strerror)))
+                     "Unable to open file %s: %s" % ((e.filename, e.strerror)))
 
     if diffs_found_msg:
         reporter.log('info_blue', "\nINTERPRETING DIFFS:\n")
         reporter.log('info_blue',
-            "* Lines beginning with a - show an entry from the " + options.pre_suffix + " pre file which has changed\nor which is not present in the .post or .rollback file.\n")
+                     "* Lines beginning with a - show an entry from the " + options.pre_suffix + " pre file which has changed\nor which is not present in the .post or .rollback file.\n")
         reporter.log('info_blue',
-            "* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the " + options.pre_suffix + " pre file.\n")
+                     "* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the " + options.pre_suffix + " pre file.\n")
         reporter.log('info_blue',
-            "Please review all diff output above carefully and account for any differences\nfound.\n")
+                     "Please review all diff output above carefully and account for any differences\nfound.\n")
 
 
 class dataGather:
@@ -326,7 +326,7 @@ class dataGather:
                     found_diff = True
                     diffs_found_msg = True
                     reporter.log('error',
-                        "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
+                                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
                 reporter.log('info', line)
 
         if not found_diff:
@@ -405,7 +405,7 @@ if options.phase:
     for filename in os.listdir('.'):
         if filename.endswith(".%s" % phase) and not options.compare_only:
             reporter.log('error', "Files for %s already exist in %s" % (phase,
-                                                               os.getcwd()))
+                                                                        os.getcwd()))
             sys.exit(1)
 else:
     now = datetime.datetime.now()
@@ -439,7 +439,7 @@ for section in Config.sections():
     if Config.has_option(section, 'type'):
         if Config.get(section, 'type').lower() != "file" and Config.get(section, 'type').lower() != "command":
             reporter.log('error',
-                "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
+                         "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
 
 # Get a list of processes running on the server
 procs = subprocess.Popen(
@@ -505,7 +505,7 @@ if os.path.exists('/usr/bin/systemctl'):
                     'systemdinit', fail_ok=True, sort=False)
 
 reporter.log('info_green',
-    "Getting network details, firewall rules and listening services...")
+             "Getting network details, firewall rules and listening services...")
 run.run_command(['ip', 'address', 'show'],
                 'ip_addresses', fail_ok=False, sort=False)
 run.run_command(['ip', 'route', 'show'],
@@ -644,7 +644,7 @@ for section in Config.sections():
                 cmd.split(), section, fail_ok=failokcfg, sort=sortcfg)
     except Exception, e:
         reporter.log('error',
-            "Check config file options for section %s: %s" % (section, e))
+                     "Check config file options for section %s: %s" % (section, e))
 
 # copy important files
 reporter.log('info_green', "Copying files...")
@@ -685,7 +685,7 @@ for section in Config.sections():
             run.copy_file(cpfile, fail_ok=failokcfg)
     except Exception, e:
         reporter.log('error',
-            "Check config file options for section %s: %s" % (section, e))
+                     "Check config file options for section %s: %s" % (section, e))
 
 reporter.log('info', "\n")
 
