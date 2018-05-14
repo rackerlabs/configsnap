@@ -34,31 +34,48 @@ diffs_found_msg = False
 is_php_detected = False
 
 
-def report_verbose(message):
-    if options.verbose_enabled:
-        sys.stdout.write("\033[92m%s\n\033[0m" % message)
+class Reporter(object):
+    def __init__(self):
+        self.silent_log = []
+        self.LEVELS = {
+            'info': '\033[0m%s\033[0m\n',
+            'info_green': '\033[92m%s\033[0m\n',
+            'info_blue': '\033[94m%s\033[0m\n',
+            'error': '\033[91m%s\033[0m\n',
+            'verbose': '\033[93m%s\033[0m\n'
+        }
 
+        return
 
-def report_info(message):
-    if not options.silent_enabled:
-        sys.stdout.write("\033[92m%s\n\033[0m" % message)
+    def log(self, level, message):
+        if level not in self.LEVELS:
+            sys.stdout.write(self.LEVELS['error'] % ("Unknown level: '" + level + "' for message: " + message))
+            return
 
+        if not options.silent_enabled:
+            if level == 'verbose':
+                if options.verbose_enabled:
+                    sys.stdout.write(self.LEVELS[level] % message)
+            else:
+                sys.stdout.write(self.LEVELS[level] % message)
+        else:
+            if level == 'verbose':
+                if options.verbose_enabled:
+                    self.silent_log.append(message + "\n")
+            else:
+                self.silent_log.append(message + "\n")
 
-def report_info_blue(message):
-    if not options.silent_enabled:
-        sys.stdout.write("\033[1;34m%s\n\033[0m" % message)
-
-
-def report_error(message):
-    if not options.silent_enabled:
-        sys.stderr.write("\033[91m%s\n\033[0m" % message)
+    def write_log(self):
+        self.configsnap_log = open(os.path.join(tagdir, 'configsnap.diff'), 'w')
+        self.configsnap_log.writelines(self.silent_log)
+        self.configsnap_log.close()
 
 
 def check_option_conflicts(options):
     # Do not allow silent and verbose options to be used in conjunction
     if options.silent_enabled is True and options.verbose_enabled is True:
         options.silent_enabled = False
-        report_error("Conflicting options provided: '-v' and '-s' are not compatible")
+        reporter.log('error', "Conflicting options provided: '-v' and '-s' are not compatible")
         sys.exit(1)
 
     # Do not allow archive or overwrite to be used in conjunction with compare-only
@@ -71,12 +88,12 @@ def check_option_conflicts(options):
             requires = [options.phase is not None,
                         options.pre_suffix is not None]
         except:
-            report_error("--phase or --pre not set")
+            reporter.log('error', "--phase or --pre not set")
             sys.exit(1)
 
         if any(conflicts):
             options.silent_enabled = False
-            report_error("Conflicting options provided: '-a', '-s' and '-w' conflict with '-C'")
+            reporter.log('error', "Conflicting options provided: '-a', '-s' and '-w' conflict with '-C'")
             sys.exit(1)
 
 
@@ -85,20 +102,20 @@ def create_dir(tagdir, overwrite):
     if os.path.isdir(workdir) and overwrite:
         try:
             if any(options.phase in s for s in os.listdir(workdir)):
-                report_info(
-                    "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, workdir))
+                reporter.log('info_green',
+                             "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, workdir))
                 for reportfile in os.listdir(workdir):
                     if options.phase in reportfile:
                         os.remove(os.path.join(workdir, reportfile))
         except OSError, e:
-            report_error("Unable to remove %s: %s" % (workdir, e))
+            reporter.log('error', "Unable to remove %s: %s" % (workdir, e))
             sys.exit(1)
 
     if not os.path.isdir(workdir):
         try:
             os.makedirs(workdir)
         except OSError, e:
-            report_error("Unable to create %s" % (workdir, e))
+            reporter.log('error', "Unable to create %s" % (workdir, e))
             sys.exit(1)
 
     return workdir
@@ -110,11 +127,11 @@ def create_archive(tagdir, workdir, tag, overwrite):
 
     if os.path.isfile(output_filename):
         if overwrite:
-            report_info(
-                "%s exists. Overwrite (-w/--overwrite) enabled so will overwrite." % output_filename)
+            reporter.log('info_green',
+                         "%s exists. Overwrite (-w/--overwrite) enabled so will overwrite." % output_filename)
         else:
-            report_error(
-                "Archive file %s already exists. Use -w overwrite." % output_filename)
+            reporter.log('error',
+                         "Archive file %s already exists. Use -w overwrite." % output_filename)
             return "", False
 
     try:
@@ -122,7 +139,7 @@ def create_archive(tagdir, workdir, tag, overwrite):
         tar.add(workdir, arcname=os.path.basename(workdir))
         tar.close()
     except IOError, e:
-        report_error("Can't create archive %s: %s" % (output_filename, e))
+        reporter.log('error', "Can't create archive %s: %s" % (output_filename, e))
         sys.exit(1)
 
     return output_filename, True
@@ -137,33 +154,31 @@ def compare_files():
         if filename.endswith(options.pre_suffix):
             found_pre = True
     if not found_pre:
-        report_error("Unable to diff, as no " + options.pre_suffix + " pre files")
+        reporter.log('error', "Unable to diff, as no " + options.pre_suffix + " pre files")
         sys.exit(0)
 
-    report_info("This is  %s  phase so performing diffs..." % phase)
+    reporter.log('info_green', "This is  %s  phase so performing diffs..." % phase)
 
-    for filename in ('sysvinit', 'mounts', 'netstat', 'ip_addresses',
-                     'ip_routes', 'partitions', 'lspci'):
-        run.get_diff(filename)
-
-    if is_php_detected:
-        run.get_diff('php.ini')
-        if os.path.exists('/usr/bin/pecl'):
-            run.get_diff('pecl-list')
-        for filename in glob.glob(os.path.join(workdir, "php.d/*" + options.pre_suffix)):
-            filename = str.replace(filename, "." + options.pre_suffix, "")
-            run.get_diff(filename)
+    report_list = ['sysvinit', 'mounts', 'netstat', 'ip_addresses',
+                   'ip_routes', 'partitions', 'lspci', 'lvs', 'pvs', 'vgs',
+                   'powermt', 'omreport_version', 'omreport_memory',
+                   'omreport_processors', 'omreport_nics', 'omreport_vdisk',
+                   'omreport_pdisk', 'hpreport_server', 'hpreport_memory',
+                   'hpreport_bios', 'hpreport_storage_controller',
+                   'hpreport_storage_vdisk', 'hpreport_storage_pdisk',
+                   'multipath', 'systemdinit', 'upstartinit', 'yum.conf',
+                   'dnf.conf', 'pcs_constraints']
 
     if 'rollback' in phase:
-        run.get_diff('packages')
+        report_list.append('packages')
 
-    compare = ['lvs', 'pvs', 'vgs', 'powermt', 'omreport_version',
-               'omreport_memory', 'omreport_processors',
-               'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
-               'hpreport_server', 'hpreport_memory', 'hpreport_bios',
-               'hpreport_storage_controller', 'hpreport_storage_vdisk',
-               'hpreport_storage_pdisk', 'multipath', 'systemdinit',
-               'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints']
+    if is_php_detected:
+        report_list.append('php.ini')
+        if os.path.exists('/usr/bin/pecl'):
+            report_list.append('pecl-list')
+        for filename in glob.glob(os.path.join(workdir, "php.d/*" + options.pre_suffix)):
+            filename = str.replace(filename, "." + options.pre_suffix, "")
+            report_list.append(filename)
 
     # Array to hold custom collection files and commands to compare
     additional_to_compare = []
@@ -173,16 +188,18 @@ def compare_files():
             if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
                 additional_to_compare.append(section)
         except Exception, e:
-            report_error(
-                "Check config file options for section %s: %s" % (section, e))
+            reporter.log('error',
+                         "Check config file options for section %s: %s" % (section, e))
 
-    compare.extend(additional_to_compare)
+    report_list.extend(additional_to_compare)
 
-    for filename in compare:
+    for filename in report_list:
         pre_filename = os.path.join(workdir,
                                     "%s.%s" % (filename, options.pre_suffix))
         if os.path.exists(pre_filename):
             run.get_diff(filename)
+        else:
+            reporter.log('verbose', 'Missing pre file %s' % pre_filename)
 
     try:
         uname_pre_fd = open(
@@ -192,20 +209,20 @@ def compare_files():
         uname_pre = uname_pre_fd.read().strip()
         uname_post = uname_post_fd.read().strip()
         if uname_pre != uname_post:
-            sys.stdout.write("Old uname: %s. New uname: %s\n" %
-                             (uname_pre, uname_post))
+            reporter.log('info', "Old uname: %s. New uname: %s\n" %
+                         (uname_pre, uname_post))
     except Exception, e:
-        report_error(
-            "Unable to open file %s: %s" % ((e.filename, e.strerror)))
+        reporter.log('error',
+                     "Unable to open file %s: %s" % ((e.filename, e.strerror)))
 
     if diffs_found_msg:
-        report_info_blue("\nINTERPRETING DIFFS:\n")
-        report_info_blue(
-            "* Lines beginning with a - show an entry from the " + options.pre_suffix + " pre file which has changed\nor which is not present in the .post or .rollback file.\n")
-        report_info_blue(
-            "* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the " + options.pre_suffix + " pre file.\n")
-        report_info_blue(
-            "Please review all diff output above carefully and account for any differences\nfound.\n")
+        reporter.log('info_blue', "\nINTERPRETING DIFFS:\n")
+        reporter.log('info_blue',
+                     "* Lines beginning with a - show an entry from the " + options.pre_suffix + " pre file which has changed\nor which is not present in the .post or .rollback file.\n")
+        reporter.log('info_blue',
+                     "* Lines beginning with a + show an entry from the .post or.rollback file which\nhas changed or which is not present in the " + options.pre_suffix + " pre file.\n")
+        reporter.log('info_blue',
+                     "Please review all diff output above carefully and account for any differences\nfound.\n")
 
 
 class dataGather:
@@ -217,7 +234,7 @@ class dataGather:
 
         if not os.path.exists(r_filename):
             if not fail_ok:
-                report_error(" %s does not exist" % r_filename)
+                reporter.log('error', " %s does not exist" % r_filename)
             return
         filename = os.path.basename(r_filename)
         w_filename = os.path.join(destdir, "%s.%s" %
@@ -236,11 +253,10 @@ class dataGather:
 
             r_fd.close()
             w_fd.close()
-            if not options.silent_enabled:
-                sys.stdout.write(" %s \n" % r_filename)
+            reporter.log('info', " %s" % r_filename)
 
         except IOError:
-            report_error("Error copying %s" % w_filename)
+            reporter.log('error', "Error copying %s" % w_filename)
 
     def run_command(self, command, filename, fail_ok=False,
                     sort=False, stdout=False, shell=False):
@@ -250,7 +266,7 @@ class dataGather:
                 stderr=subprocess.PIPE, shell=shell)
         except OSError, e:
             if not fail_ok:
-                report_error("Error running %s: %s" %
+                reporter.log('error', "Error running %s: %s" %
                              (command[0], e.strerror))
                 return None
             else:
@@ -260,7 +276,7 @@ class dataGather:
         returncode = command_proc.wait()
 
         if not fail_ok and returncode != 0:
-            report_error("%s failed\nPlease troubleshoot manually" %
+            reporter.log('error', "%s failed\nPlease troubleshoot manually" %
                          (' '.join(command), ))
             return None
 
@@ -273,19 +289,19 @@ class dataGather:
         filename = os.path.join(self.workdir, "%s.%s" % (filename, self.phase))
 
         if os.path.exists(filename):
-            report_error("%s already exists" % filename)
+            reporter.log('error', "%s already exists" % filename)
 
         try:
             output_fd = open(filename, 'w')
         except IOError, e:
-            report_error("Unable to open %s: %s" % (filename, e.strerror))
+            reporter.log('error', "Unable to open %s: %s" % (filename, e.strerror))
             return False
 
         output_fd.writelines(output)
         output_fd.close()
-        report_verbose("Recording %s to %s" % (command, filename))
+        reporter.log('verbose', "Recording %s to %s" % (command, filename))
         if stdout:
-            sys.stdout.writelines(output)
+            reporter.log('info', output)
 
     def get_diff(self, filename):
         global diffs_found_msg
@@ -296,7 +312,7 @@ class dataGather:
             pre_fd = open(pre_filename)
             post_fd = open(post_filename)
         except IOError, e:
-            report_error("Unable to open file %s: %s" %
+            reporter.log('error', "Unable to open file %s: %s" %
                          (e.filename, e.strerror))
             return False
 
@@ -310,12 +326,12 @@ class dataGather:
                 if not found_diff:
                     found_diff = True
                     diffs_found_msg = True
-                    report_error(
-                        "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
-                sys.stdout.write(line)
+                    reporter.log('error',
+                                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
+                reporter.log('info', line)
 
         if not found_diff:
-            report_info("No differences against %s.%s" % (filename, options.pre_suffix))
+            reporter.log('info_green', "No differences against %s.%s" % (filename, options.pre_suffix))
 
     def __init__(self, workdir, phase):
         self.workdir = workdir
@@ -361,16 +377,18 @@ parser.add_option('--pre',
 
 (options, args) = parser.parse_args()
 
+reporter = Reporter()
+
 if options.print_version:
     print "configsnap %s" % version
     sys.exit(0)
 
 if os.geteuid() != 0:
-    report_error("Not running as root, exiting")
+    reporter.log('error', "Not running as root, exiting")
     sys.exit(1)
 
 if not options.tag:
-    report_error("No tag given, exiting")
+    reporter.log('error', "No tag given, exiting")
     sys.exit(1)
 
 check_option_conflicts(options)
@@ -387,8 +405,8 @@ if options.phase:
     phase = options.phase
     for filename in os.listdir('.'):
         if filename.endswith(".%s" % phase) and not options.compare_only:
-            report_error("Files for %s already exist in %s" % (phase,
-                                                               os.getcwd()))
+            reporter.log('error', "Files for %s already exist in %s" % (phase,
+                                                                        os.getcwd()))
             sys.exit(1)
 else:
     now = datetime.datetime.now()
@@ -400,7 +418,7 @@ customcollectionfile = '/etc/configsnap/additional.conf'
 Config = ConfigParser.ConfigParser()
 
 if options.compare_only:
-    report_info("Comparing files from phases: %s and %s" % (options.pre_suffix, options.phase))
+    reporter.log('info_green', "Comparing files from phases: %s and %s" % (options.pre_suffix, options.phase))
     compare_files()
     sys.exit(0)
 
@@ -408,10 +426,10 @@ if os.path.exists(customcollectionfile):
     # Check file is owned by root and not read/writable by anyone else
     st = os.stat(customcollectionfile)
     if st.st_uid != 0:
-        report_error("Custom collection file %s not owned by root, ignoring" %
+        reporter.log('error', "Custom collection file %s not owned by root, ignoring" %
                      customcollectionfile)
     elif oct(st.st_mode)[-2:] != '00':
-        report_error("Custom collection file %s is read or writable by non-root, ignoring" %
+        reporter.log('error', "Custom collection file %s is read or writable by non-root, ignoring" %
                      customcollectionfile)
     else:
         # Only read in the config file if the above checks have passed
@@ -421,8 +439,8 @@ if os.path.exists(customcollectionfile):
 for section in Config.sections():
     if Config.has_option(section, 'type'):
         if Config.get(section, 'type').lower() != "file" and Config.get(section, 'type').lower() != "command":
-            report_error(
-                "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
+            reporter.log('error',
+                         "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
 
 # Get a list of processes running on the server
 procs = subprocess.Popen(
@@ -431,14 +449,14 @@ procs = subprocess.Popen(
 
 procs_output = procs.communicate()[0]
 if procs.returncode != 0:
-    report_error('Failed to get process list')
+    reporter.log('error', 'Failed to get process list')
 
 # Just keep the process name, drop the arguments
 procs_output = procs_output.splitlines()
 procs_output = [x.split()[0] for x in procs_output]
 
 run = dataGather(workdir, phase)
-report_info("Getting storage details (LVM, partitions, multipathing)...")
+reporter.log('info_green', "Getting storage details (LVM, partitions, multipathing)...")
 if os.path.exists('/sbin/lvs'):
     run.run_command(['lvs', '--noheadings'], 'lvs', fail_ok=True, sort=True)
     run.run_command(['vgs', '--noheadings'], 'vgs', fail_ok=True, sort=True)
@@ -452,10 +470,10 @@ if os.path.exists('/sbin/lvs'):
                                  stderr=subprocess.PIPE)
         vgcfg.wait()
     except:
-        report_error("vgcfgbackup failed")
+        reporter.log('error', "vgcfgbackup failed")
     else:
         if vgcfg.returncode != 0:
-            report_error("vgcfg exited with return code %d" % vgcfg.returncode)
+            reporter.log('error', "vgcfg exited with return code %d" % vgcfg.returncode)
 
 run.run_command(['parted', '-l', '-s'],
                 'partitions', fail_ok=False, sort=False)
@@ -465,10 +483,10 @@ if os.path.exists('/sbin/powermt'):
     run.run_command(['powermt', 'display', 'dev=all'],
                     'powermt', fail_ok=True, sort=False, stdout=False)
 
-report_info("Getting process list...")
+reporter.log('info_green', "Getting process list...")
 run.run_command(['ps', 'a', 'u', 'f', 'x'], 'ps', fail_ok=False, sort=False)
 
-report_info("Getting package list and enabled services...")
+reporter.log('info_green', "Getting package list and enabled services...")
 run.run_command(['uname', '-r'], 'uname', fail_ok=False, sort=False)
 if os.path.exists('/bin/rpm'):
     run.run_command(['rpm', '-qa'], 'packages', fail_ok=False, sort=True)
@@ -487,8 +505,8 @@ if os.path.exists('/usr/bin/systemctl'):
     run.run_command(['systemctl', 'list-unit-files'],
                     'systemdinit', fail_ok=True, sort=False)
 
-report_info(
-    "Getting network details, firewall rules and listening services...")
+reporter.log('info_green',
+             "Getting network details, firewall rules and listening services...")
 run.run_command(['ip', 'address', 'show'],
                 'ip_addresses', fail_ok=False, sort=False)
 run.run_command(['ip', 'route', 'show'],
@@ -499,7 +517,7 @@ run.run_command(
     "netstat -nutlp|awk -F'[ /]+' '/tcp/ {print $8,$1,$4}'|column -t",
     'netstat', fail_ok=False, sort=True, shell=True)
 
-report_info("Getting cluster status...")
+reporter.log('info_green', "Getting cluster status...")
 if os.path.exists('/usr/sbin/clustat'):
     run.run_command(['clustat', '-l'], 'clustat',
                     fail_ok=False, sort=False, stdout=False)
@@ -509,7 +527,7 @@ if os.path.exists('/usr/sbin/pcs'):
     run.run_command(['pcs', 'constraint', 'show', '--full'], 'pcs_constraints',
                     fail_ok=False, sort=False, stdout=False)
 
-report_info("Getting misc (dmesg, lspci, sysctl)...")
+reporter.log('info_green', "Getting misc (dmesg, lspci, sysctl)...")
 run.run_command(['dmesg'], 'dmesg', fail_ok=False, sort=False)
 if os.path.exists('/sbin/lspci') or os.path.exists('/usr/bin/lspci'):
     run.run_command(['lspci', '-mm'], 'lspci', fail_ok=True, sort=True)
@@ -518,7 +536,7 @@ run.run_command(['sysctl', '-a'], 'sysctl', fail_ok=True, sort=True)
 
 omreportpath = '/opt/dell/srvadmin/bin/omreport'
 if os.path.exists(omreportpath):
-    report_info("Getting Dell hardware information...")
+    reporter.log('info_green', "Getting Dell hardware information...")
     run.run_command([omreportpath, 'chassis'],
                     'omreport_chassis', fail_ok=True,
                     sort=False, stdout=False)
@@ -549,7 +567,7 @@ hpasmpath = '/sbin/hpasmcli'
 dmipath = '/usr/sbin/dmidecode'
 hpstorutil = ['/usr/sbin/hpssacli', '/usr/sbin/hpacucli']
 if os.path.exists(hpasmpath):
-    report_info("Getting HP hardware information...")
+    reporter.log('info_green', "Getting HP hardware information...")
     run.run_command([hpasmpath, '-s', 'show server'],
                     'hpreport_server', fail_ok=True,
                     sort=False, stdout=False)
@@ -562,7 +580,7 @@ if os.path.exists(hpasmpath):
                         sort=False, stdout=False)
     for storutil in hpstorutil:
         if os.path.exists(storutil):
-            report_info("Getting HP storage data...")
+            reporter.log('info_green', "Getting HP storage data...")
             run.run_command([storutil, 'controller', 'all', 'show', 'detail'],
                             'hpreport_storage_controller', fail_ok=True,
                             sort=False, stdout=False)
@@ -591,14 +609,14 @@ if os.path.exists(hpasmpath):
             break
 
 if '/usr/sbin/httpd' in procs_output or '/usr/sbin/httpd.worker' in procs_output:
-    report_info("Getting Apache vhosts and modules...")
+    reporter.log('info_green', "Getting Apache vhosts and modules...")
     run.run_command(
         ['httpd', '-S'], 'httpd_vhosts', fail_ok=False, sort=False)
     run.run_command(
         ['httpd', '-M'], 'httpd_modules', fail_ok=False, sort=True)
 
 if '/usr/libexec/mysqld' in procs_output:
-    report_info("Getting MySQL databases...")
+    reporter.log('info_green', "Getting MySQL databases...")
     run.run_command(['mysql', '-Bse', 'show databases;'],
                     'mysql_databases', fail_ok=True, sort=True)
 
@@ -622,15 +640,15 @@ for section in Config.sections():
             else:
                 sortcfg = False
 
-            report_info("Running custom command %s: %s" % (section, cmd))
+            reporter.log('info_green', "Running custom command %s: %s" % (section, cmd))
             run.run_command(
                 cmd.split(), section, fail_ok=failokcfg, sort=sortcfg)
     except Exception, e:
-        report_error(
-            "Check config file options for section %s: %s" % (section, e))
+        reporter.log('error',
+                     "Check config file options for section %s: %s" % (section, e))
 
 # copy important files
-report_info("Copying files...")
+reporter.log('info_green', "Copying files...")
 run.copy_file('/boot/grub/grub.conf', fail_ok=True)
 run.copy_file('/boot/grub2/grubenv', fail_ok=True)
 run.copy_file('/etc/default/grub', fail_ok=True)
@@ -667,15 +685,15 @@ for section in Config.sections():
 
             run.copy_file(cpfile, fail_ok=failokcfg)
     except Exception, e:
-        report_error(
-            "Check config file options for section %s: %s" % (section, e))
+        reporter.log('error',
+                     "Check config file options for section %s: %s" % (section, e))
 
-report_info("\n")
+reporter.log('info', "\n")
 
 # php specifics
 if os.path.exists('/usr/bin/php'):
     is_php_detected = True
-    report_info("Copying PHP related files...")
+    reporter.log('info_green', "Copying PHP related files...")
     run.copy_file('/etc/php.ini', fail_ok=True)
     destdir = os.path.join(workdir, "php.d/")
     if not os.path.exists(destdir):
@@ -691,7 +709,7 @@ if os.path.exists('/usr/bin/php'):
         run.run_command(
             ['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
 
-if ('post' in phase or 'rollback' in phase or options.force_compare) and not options.silent_enabled:
+if ('post' in phase or 'rollback' in phase or options.force_compare):
     compare_files()
 
 
@@ -699,6 +717,9 @@ if options.archive_enabled:
     archive_location, success = create_archive(
         tagdir, workdir, options.tag, options.overwrite_enabled)
     if success:
-        report_info("Archive saved to %s" % archive_location)
+        reporter.log('info_green', "Archive saved to %s" % archive_location)
 
-report_info("Finished! Backups were saved to %s/*.%s" % (workdir, phase))
+reporter.log('info_green', "Finished! Backups were saved to %s/*.%s" % (workdir, phase))
+
+if options.silent_enabled:
+    reporter.write_log()
