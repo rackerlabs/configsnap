@@ -37,32 +37,33 @@ is_php_detected = False
 class Reporter(object):
     def __init__(self):
         self.silent_log = []
+        self.LEVELS = {
+            'info': '\033[0m%s\033[0m\n',
+            'info_green': '\033[92m%s\033[0m\n',
+            'info_blue': '\033[94m%s\033[0m\n',
+            'error': '\033[91m%s\033[0m\n',
+            'verbose': '\033[93m%s\033[0m\n'
+        }
+
         return
 
     def log(self, level, message):
-        self.level = level
-        self.message = message
+        if level not in self.LEVELS:
+            sys.stdout.write(self.LEVELS['error'] % ("Unknown level: '" + level + "' for message: " + message))
+            return
 
         if not options.silent_enabled:
-            if self.level == 'verbose':
+            if level == 'verbose':
                 if options.verbose_enabled:
-                    sys.stdout.write("\033[92m%s\033[0m\n" % self.message)
-            elif self.level == 'info':
-                sys.stdout.write("\033[97m%s\033[0m\n" % self.message)
-            elif self.level == 'info_green':
-                sys.stdout.write("\033[92m%s\033[0m\n" % self.message)
-            elif self.level == 'info_blue':
-                sys.stdout.write("\033[1;34m%s\033[0m\n" % self.message)
-            elif self.level == 'error':
-                sys.stderr.write("\033[91m%s\033[0m\n" % self.message)
+                    sys.stdout.write(self.LEVELS[level] % message)
             else:
-                sys.stdout.write("\033[97m%s\033[0m\n" % self.message)
+                sys.stdout.write(self.LEVELS[level] % message)
         else:
-            if self.level == 'verbose':
+            if level == 'verbose':
                 if options.verbose_enabled:
-                    self.silent_log.append(self.message + "\n")
+                    self.silent_log.append(message + "\n")
             else:
-                self.silent_log.append(self.message + "\n")
+                self.silent_log.append(message + "\n")
 
     def write_log(self):
         self.configsnap_log = open(os.path.join(tagdir, 'configsnap.diff'), 'w')
