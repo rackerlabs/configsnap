@@ -2,6 +2,9 @@ configsnap NEWS
 
 0.14
  * Adjusted -w option to only overwrite specific tagged files
+ * Add option to compare existing files without gathering new data using the -C/--compare-only option
+ * Added the option to capture post data and compare to phases other than *.pre using the --pre option
+ * Added option to force a compare even id the phase does not contain "post" or "rollback" using the --force-compare option
 
 0.13
  * New option -a to create a tar archive of the output
