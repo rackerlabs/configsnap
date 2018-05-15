@@ -52,7 +52,7 @@ def report_error(message):
     if not options.silent_enabled:
         sys.stderr.write("\033[91m%s\n\033[0m" % message)
 
-        
+
 def report_error_stdout(message):
     if not options.silent_enabled:
         sys.stdout.write("\033[91m%s\n\033[0m" % message)
