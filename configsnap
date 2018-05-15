@@ -53,6 +53,10 @@ def report_error(message):
     if not options.silent_enabled:
         sys.stderr.write("\033[91m%s\n\033[0m" % message)
 
+def report_error_stdout(message)
+    if not options.silent_enabled:
+        sys.stdout.write("\033[91m%s\n\033[0m" % message)
+
 
 def check_option_conflicts(options):
     # Do not allow silent and verbose options to be used in conjunction
@@ -311,6 +315,9 @@ class dataGather:
                     found_diff = True
                     diffs_found_msg = True
                     report_error(
+                        "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
+                    # Duplicating to stdout for reporting purposes
+                    report_error_stdout(
                         "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
                 sys.stdout.write(line)
 
