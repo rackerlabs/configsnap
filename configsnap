@@ -510,6 +510,9 @@ if os.path.exists('/usr/sbin/pcs'):
                     fail_ok=False, sort=False, stdout=False)
     run.run_command(['pcs', 'constraint', 'show', '--full'], 'pcs_constraints',
                     fail_ok=False, sort=False, stdout=False)
+if os.path.exists('/sbin/crm_mon'):
+    run.run_command(['crm_mon', '--as-xml'], 'crm_mon',
+                    fail_ok=False, sort=False, stdout=False)
 
 report_info("Getting misc (dmesg, lspci, sysctl)...")
 run.run_command(['dmesg'], 'dmesg', fail_ok=False, sort=False)
