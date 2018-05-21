@@ -302,7 +302,7 @@ class dataGather:
             return False
 
         try:
-            diff_proc = subprocess.Popen(['diff', '--unified=0', '--ignore-blank-lines', '--ignore-all-space', pre_filename, post_filename],
+            diff_proc = subprocess.Popen(['diff', '--unified=0', '--ignore-blank-lines', '--ignore-space-change', pre_filename, post_filename],
                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
         except OSError, e:
             report_error("Error running %s: %s" %
