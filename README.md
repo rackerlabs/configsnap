@@ -18,6 +18,7 @@ Options:
   -v, --verbose         print debug info
   -V, --version         print version
   -s, --silent          no output to stdout
+  --force-compare       Force a comparison after collecting data
   -t TAG, --tag=TAG     tag identifer (e.g. a ticket number)
   -d BASEDIR, --basedir=BASEDIR
                         base directory to store output
@@ -25,6 +26,10 @@ Options:
                         phase this is being used for. Can be any string.
                         Phases containing  post  or  rollback  will perform
                         diffs
+  -C, --compare-only    Compare existing files with tags specified with --pre
+                        and --phase
+  --pre=PRE_SUFFIX      suffix for files captured at previous state, for
+                        comparison
 ```
 
 Example output:
