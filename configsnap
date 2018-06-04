@@ -50,11 +50,6 @@ def report_info_blue(message):
 
 def report_error(message):
     if not options.silent_enabled:
-        sys.stderr.write("\033[91m%s\n\033[0m" % message)
-
-
-def report_error_stdout(message):
-    if not options.silent_enabled:
         sys.stdout.write("\033[91m%s\n\033[0m" % message)
 
 
@@ -307,7 +302,7 @@ class dataGather:
             return False
 
         try:
-            diff_proc = subprocess.Popen(['diff', '-B', '-b', pre_filename, post_filename],
+            diff_proc = subprocess.Popen(['diff', '--unified=0', '--ignore-blank-lines', '--ignore-space-change', pre_filename, post_filename],
                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
         except OSError, e:
             report_error("Error running %s: %s" %
@@ -318,8 +313,6 @@ class dataGather:
             found_diff = True
             diffs_found_msg = True
             report_error(
-                "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
-            report_error_stdout(
                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
 
             sys.stdout.writelines(diff_proc.stdout.readlines())
@@ -516,6 +509,9 @@ if os.path.exists('/usr/sbin/pcs'):
     run.run_command(['pcs', 'status'], 'pcs_status',
                     fail_ok=False, sort=False, stdout=False)
     run.run_command(['pcs', 'constraint', 'show', '--full'], 'pcs_constraints',
+                    fail_ok=False, sort=False, stdout=False)
+if os.path.exists('/sbin/crm_mon'):
+    run.run_command(['crm_mon', '--as-xml'], 'crm_mon',
                     fail_ok=False, sort=False, stdout=False)
 
 report_info("Getting misc (dmesg, lspci, sysctl)...")
