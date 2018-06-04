@@ -314,7 +314,8 @@ class dataGather:
             diffs_found_msg = True
             report_error(
                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
-
+            report_error_stdout(
+                "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
             sys.stdout.writelines(diff_proc.stdout.readlines())
         else:
             report_info("No differences against %s.%s" % (filename, options.pre_suffix))
