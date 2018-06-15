@@ -50,7 +50,7 @@ def report_info_blue(message):
 
 def report_error(message):
     if not options.silent_enabled:
-        sys.stderr.write("\033[91m%s\n\033[0m" % message)
+        sys.stdout.write("\033[91m%s\n\033[0m" % message)
 
 
 def check_option_conflicts(options):
@@ -314,7 +314,6 @@ class dataGather:
             diffs_found_msg = True
             report_error(
                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
-
             sys.stdout.writelines(diff_proc.stdout.readlines())
         else:
             report_info("No differences against %s.%s" % (filename, options.pre_suffix))
