@@ -650,6 +650,9 @@ run.copy_file('/proc/cmdline', fail_ok=False)
 run.copy_file('/proc/meminfo', fail_ok=False)
 run.copy_file('/proc/mounts', fail_ok=False, sort=False)
 run.copy_file('/proc/scsi/scsi', fail_ok=False, sort=False)
+run.copy_file('/etc/sudoers', fail_ok=False, sort=False)
+for filename in glob.glob('/etc/sudoers.d/*'):
+    run.copy_file(filename, fail_ok=False)
 for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
     run.copy_file(filename, fail_ok=False)
 for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
