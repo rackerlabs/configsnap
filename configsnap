@@ -167,10 +167,10 @@ def compare_files():
 
     # Append all files in all subdirectories to the compare list
     for directory in os.listdir(workdir):
-        if os.path.isdir(os.path.join(workdir,directory)):
-            for subdir_file in os.listdir(os.path.join(workdir,directory)):
-                if not os.path.join(directory,os.path.splitext(subdir_file)[0]) in compare:
-                    compare.append(os.path.join(directory,os.path.splitext(subdir_file)[0]))
+        if os.path.isdir(os.path.join(workdir, directory)):
+            for subdir_file in os.listdir(os.path.join(workdir, directory)):
+                if not os.path.join(directory, os.path.splitext(subdir_file)[0]) in compare:
+                    compare.append(os.path.join(directory, os.path.splitext(subdir_file)[0]))
 
     # Array to hold custom collection files and commands to compare
     additional_to_compare = []
