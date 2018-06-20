@@ -50,7 +50,7 @@ def report_info_blue(message):
 
 def report_error(message):
     if not options.silent_enabled:
-        sys.stderr.write("\033[91m%s\n\033[0m" % message)
+        sys.stdout.write("\033[91m%s\n\033[0m" % message)
 
 
 def check_option_conflicts(options):
@@ -162,7 +162,15 @@ def compare_files():
                'hpreport_server', 'hpreport_memory', 'hpreport_bios',
                'hpreport_storage_controller', 'hpreport_storage_vdisk',
                'hpreport_storage_pdisk', 'multipath', 'systemdinit',
-               'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints']
+               'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints',
+               'sudoers']
+
+    # Append all files in all subdirectories to the compare list
+    for directory in os.listdir(workdir):
+        if os.path.isdir(os.path.join(workdir, directory)):
+            for subdir_file in os.listdir(os.path.join(workdir, directory)):
+                if not os.path.join(directory, os.path.splitext(subdir_file)[0]) in compare:
+                    compare.append(os.path.join(directory, os.path.splitext(subdir_file)[0]))
 
     # Array to hold custom collection files and commands to compare
     additional_to_compare = []
@@ -243,6 +251,27 @@ class dataGather:
         except IOError:
             report_error("Error copying %s" % w_filename)
 
+    def copy_dir(self, srcdir, destdir=None, fail_ok=False, sort=False):
+        # Did we override the destination
+        if destdir is None:
+            destdir = os.path.join(self.workdir, os.path.basename(os.path.dirname(srcdir)))
+
+        if not os.path.exists(srcdir):
+            if not fail_ok:
+                report_error(" Directory %s does not exist" % destdir)
+            return
+
+        if not os.path.exists(destdir):
+            try:
+                os.makedirs(destdir)
+            except OSError, e:
+                report_error("Unable to create directory %s" % (workdir, e))
+                sys.exit(1)
+
+        for filename in os.listdir(srcdir):
+            # We are explicitly overriding the destdir for the copy_file function
+            self.copy_file(srcdir + filename, destdir=destdir, fail_ok=False, sort=False)
+
     def run_command(self, command, filename, fail_ok=False,
                     sort=False, stdout=False, shell=False):
         try:
@@ -302,7 +331,7 @@ class dataGather:
             return False
 
         try:
-            diff_proc = subprocess.Popen(['diff', '-B', '-b', pre_filename, post_filename],
+            diff_proc = subprocess.Popen(['diff', '--unified=0', '--ignore-blank-lines', '--ignore-space-change', pre_filename, post_filename],
                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
         except OSError, e:
             report_error("Error running %s: %s" %
@@ -314,7 +343,6 @@ class dataGather:
             diffs_found_msg = True
             report_error(
                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
-
             sys.stdout.writelines(diff_proc.stdout.readlines())
         else:
             report_info("No differences against %s.%s" % (filename, options.pre_suffix))
@@ -510,6 +538,9 @@ if os.path.exists('/usr/sbin/pcs'):
                     fail_ok=False, sort=False, stdout=False)
     run.run_command(['pcs', 'constraint', 'show', '--full'], 'pcs_constraints',
                     fail_ok=False, sort=False, stdout=False)
+if os.path.exists('/sbin/crm_mon'):
+    run.run_command(['crm_mon', '--as-xml'], 'crm_mon',
+                    fail_ok=False, sort=False, stdout=False)
 
 report_info("Getting misc (dmesg, lspci, sysctl)...")
 run.run_command(['dmesg'], 'dmesg', fail_ok=False, sort=False)
@@ -648,6 +679,8 @@ run.copy_file('/proc/cmdline', fail_ok=False)
 run.copy_file('/proc/meminfo', fail_ok=False)
 run.copy_file('/proc/mounts', fail_ok=False, sort=False)
 run.copy_file('/proc/scsi/scsi', fail_ok=False, sort=False)
+run.copy_file('/etc/sudoers', fail_ok=False, sort=False)
+run.copy_dir('/etc/sudoers.d/', fail_ok=False, sort=False)
 for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
     run.copy_file(filename, fail_ok=False)
 for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
