@@ -679,6 +679,8 @@ run.copy_file('/proc/mounts', fail_ok=False, sort=False)
 run.copy_file('/proc/scsi/scsi', fail_ok=False, sort=False)
 run.copy_file('/etc/sudoers', fail_ok=False, sort=False)
 run.copy_dir('/etc/sudoers.d/', fail_ok=False, sort=False)
+if os.path.exists('/etc/network/interfaces.d'):
+    run.copy_dir('/etc/network/interfaces.d', fail_ok=False, sort=False)
 for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
     run.copy_file(filename, fail_ok=False)
 for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
