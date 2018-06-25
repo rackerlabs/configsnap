@@ -145,14 +145,6 @@ def compare_files():
                      'ip_routes', 'partitions', 'lspci'):
         run.get_diff(filename)
 
-    if is_php_detected:
-        run.get_diff('php.ini')
-        if os.path.exists('/usr/bin/pecl'):
-            run.get_diff('pecl-list')
-        for filename in glob.glob(os.path.join(workdir, "php.d/*" + options.pre_suffix)):
-            filename = str.replace(filename, "." + options.pre_suffix, "")
-            run.get_diff(filename)
-
     if 'rollback' in phase:
         run.get_diff('packages')
 
@@ -164,6 +156,12 @@ def compare_files():
                'hpreport_storage_pdisk', 'multipath', 'systemdinit',
                'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints',
                'sudoers']
+
+    # Add php files if detected
+    if is_php_detected:
+        compare.append('php.ini')
+        if os.path.exists('/usr/bin/pecl'):
+            compare.append('pecl-list')
 
     # Append all files in all subdirectories to the compare list
     for directory in os.listdir(workdir):
@@ -712,12 +710,7 @@ if os.path.exists('/usr/bin/php'):
     is_php_detected = True
     report_info("Copying PHP related files...")
     run.copy_file('/etc/php.ini', fail_ok=True)
-    destdir = os.path.join(workdir, "php.d/")
-    if not os.path.exists(destdir):
-        os.makedirs(destdir)
-
-    for filename in glob.glob('/etc/php.d/*'):
-        run.copy_file(filename, destdir, fail_ok=False)
+    run.copy_dir('/etc/php.d/', fail_ok=False, sort=False)
     run.run_command(
         ['php', '-m'], 'php_modules', fail_ok=False, sort=False)
     run.run_command(
