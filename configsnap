@@ -680,7 +680,7 @@ run.copy_file('/proc/scsi/scsi', fail_ok=False, sort=False)
 run.copy_file('/etc/sudoers', fail_ok=False, sort=False)
 run.copy_dir('/etc/sudoers.d/', fail_ok=False, sort=False)
 if os.path.exists('/etc/network/interfaces.d'):
-    run.copy_dir('/etc/network/interfaces.d', fail_ok=False, sort=False)
+    run.copy_dir('/etc/network/interfaces.d/', fail_ok=False, sort=False)
 for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
     run.copy_file(filename, fail_ok=False)
 for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
@@ -712,7 +712,12 @@ if os.path.exists('/usr/bin/php'):
     is_php_detected = True
     report_info("Copying PHP related files...")
     run.copy_file('/etc/php.ini', fail_ok=True)
-    run.copy_dir('/etc/php.d/', fail_ok=False, sort=False)
+    if os.path.exists('/etc/php.d'):
+        run.copy_dir('/etc/php.d/', fail_ok=False, sort=False)
+
+    if os.path.exists('/etc/php'):
+        run.copy_dir('/etc/php/', fail_ok=False, sort=False)
+
     run.run_command(
         ['php', '-m'], 'php_modules', fail_ok=False, sort=False)
     run.run_command(
