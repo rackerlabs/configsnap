@@ -208,10 +208,10 @@ def compare_files():
     if diffs_found_msg:
         report_info_blue("\nINTERPRETING DIFFS:\n")
         report_info_blue(
-            "* Lines beginning with a < show an entry from the " + options.pre_suffix + " pre file which has changed\n"
+            "* Lines beginning with a - show an entry from the " + options.pre_suffix + " pre file which has changed\n"
             "or which is not present in the .post or .rollback file.\n")
         report_info_blue(
-            "* Lines beginning with a > show an entry from the .post or.rollback file which\n"
+            "* Lines beginning with a + show an entry from the .post or.rollback file which\n"
             "has changed or which is not present in the " + options.pre_suffix + " pre file.\n")
         report_info_blue(
             "Please review all diff output above carefully and account for any differences\nfound.\n")
