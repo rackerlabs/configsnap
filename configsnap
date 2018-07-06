@@ -715,9 +715,6 @@ if os.path.exists('/usr/bin/php'):
     if os.path.exists('/etc/php.d'):
         run.copy_dir('/etc/php.d/', fail_ok=False, sort=False)
 
-    if os.path.exists('/etc/php'):
-        run.copy_dir('/etc/php/', fail_ok=False, sort=False)
-
     run.run_command(
         ['php', '-m'], 'php_modules', fail_ok=False, sort=False)
     run.run_command(
