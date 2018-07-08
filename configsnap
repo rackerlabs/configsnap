@@ -222,6 +222,13 @@ class dataGather:
         if destdir is None:
             destdir = self.workdir
 
+        if not os.path.exists(destdir):
+            try:
+                os.makedirs(destdir)
+            except OSError, e:
+                report_error("Unable to create directory %s" % (workdir, e))
+                sys.exit(1)
+
         if not os.path.exists(r_filename):
             if not fail_ok:
                 report_error(" %s does not exist" % r_filename)
@@ -259,19 +266,15 @@ class dataGather:
                 report_error(" Directory %s does not exist" % destdir)
             return
 
-        if not os.path.exists(destdir):
-            try:
-                os.makedirs(destdir)
-            except OSError, e:
-                report_error("Unable to create directory %s" % (workdir, e))
-                sys.exit(1)
+        for root, dirs, files in os.walk(srcdir):
+            for cfile in files:
+                if not os.path.islink(os.path.join(root, cfile)):
+                    self.copy_file(os.path.join(root, cfile),
+                                   destdir=os.path.join(destdir, root.replace(srcdir, '')),
+                                   fail_ok=False,
+                                   sort=False)
 
-        for filename in os.listdir(srcdir):
-            # We are explicitly overriding the destdir for the copy_file function
-            self.copy_file(srcdir + filename, destdir=destdir, fail_ok=False, sort=False)
-
-    def run_command(self, command, filename, fail_ok=False,
-                    sort=False, stdout=False, shell=False):
+    def run_command(self, command, filename, fail_ok=False, sort=False, stdout=False, shell=False):
         try:
             command_proc = subprocess.Popen(
                 command, stdout=subprocess.PIPE,
@@ -714,6 +717,9 @@ if os.path.exists('/usr/bin/php'):
     run.copy_file('/etc/php.ini', fail_ok=True)
     if os.path.exists('/etc/php.d'):
         run.copy_dir('/etc/php.d/', fail_ok=False, sort=False)
+
+    if os.path.exists('/etc/php/'):
+        run.copy_dir('/etc/php/', fail_ok=False, sort=False)
 
     run.run_command(
         ['php', '-m'], 'php_modules', fail_ok=False, sort=False)
