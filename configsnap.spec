@@ -31,7 +31,6 @@ install -p -m 0644 %{name}.man %{buildroot}%{_mandir}/man1/%{name}.1
 install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional.conf
 
 %files
-%defattr(-,root,root,-)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %doc README.md
