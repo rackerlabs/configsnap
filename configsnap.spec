@@ -42,7 +42,7 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
-* Tue Jul 21 2018 Paolo Gigante <paolo.gigante.sa@gmail.com> - 0.14-1
+* Tue Jul 31 2018 Paolo Gigante <paolo.gigante.sa@gmail.com> - 0.14-1
 - Adjusted -w option to only overwrite specific tagged files
 - Add option to compare existing files without gathering new data using the -C/--compare-only option
 - Added the option to capture post data and compare to phases other than *.pre using the --pre option
