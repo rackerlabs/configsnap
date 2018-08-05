@@ -155,10 +155,6 @@ def compare_files():
                      'multipath', 'systemdinit', 'upstartinit', 'yum.conf',
                      'dnf.conf', 'pcs_constraints', 'sudoers']
 
-    # Add network config files
-    for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
-        compare_files.append(os.path.basename(filename))
-
     # Add php files if detected
     if is_php_detected:
         compare_files.append('php.ini')
@@ -352,7 +348,7 @@ class dataGather:
 
     def get_diff_dir(self, sdir):
         diffs_found_msg = False
-        sdir = os.path.join(workdir,  sdir)
+        sdir = os.path.join(workdir, sdir)
         for pre_filename in glob.glob(sdir + '/*' + options.pre_suffix):
             post_filename = "%s.%s" % (os.path.splitext(pre_filename)[0],
                                        self.phase)
