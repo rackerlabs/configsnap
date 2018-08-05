@@ -141,21 +141,23 @@ def compare_files():
 
     report_info("This is  %s  phase so performing diffs..." % phase)
 
-    for filename in ('sysvinit', 'mounts', 'netstat', 'ip_addresses',
-                     'ip_routes', 'partitions', 'lspci'):
-        run.get_diff(filename)
-
     if 'rollback' in phase:
         run.get_diff('packages')
 
-    compare = ['lvs', 'pvs', 'vgs', 'powermt', 'omreport_version',
-               'omreport_memory', 'omreport_processors',
-               'omreport_nics', 'omreport_vdisk', 'omreport_pdisk',
-               'hpreport_server', 'hpreport_memory', 'hpreport_bios',
+    compare = ['sysvinit', 'mounts', 'netstat', 'ip_addresses', 'network',
+               'interfaces', 'hosts', 'lvs', 'pvs', 'vgs', 'fstab', 'powermt',
+               'omreport_version', 'ip_routes', 'partitions', 'lspci',
+               'omreport_memory', 'omreport_processors', 'omreport_nics',
+               'omreport_vdisk', 'omreport_pdisk', 'hpreport_server',
+               'hpreport_memory', 'hpreport_bios',
                'hpreport_storage_controller', 'hpreport_storage_vdisk',
                'hpreport_storage_pdisk', 'multipath', 'systemdinit',
                'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints',
                'sudoers']
+
+    # Add network config files
+    for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
+        compare.append(os.path.basename(filename))
 
     # Add php files if detected
     if is_php_detected:
