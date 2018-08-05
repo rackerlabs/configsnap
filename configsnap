@@ -139,38 +139,31 @@ def compare_files():
         report_error("Unable to diff, as no " + options.pre_suffix + " pre files")
         sys.exit(0)
 
-    report_info("This is  %s  phase so performing diffs..." % phase)
+    report_info("\nThis is %s phase so performing file diffs..." % phase)
 
     if 'rollback' in phase:
-        run.get_diff('packages')
+        run.get_diff_files('packages')
 
-    compare = ['sysvinit', 'mounts', 'netstat', 'ip_addresses', 'network',
-               'interfaces', 'hosts', 'lvs', 'pvs', 'vgs', 'fstab', 'powermt',
-               'omreport_version', 'ip_routes', 'partitions', 'lspci',
-               'omreport_memory', 'omreport_processors', 'omreport_nics',
-               'omreport_vdisk', 'omreport_pdisk', 'hpreport_server',
-               'hpreport_memory', 'hpreport_bios',
-               'hpreport_storage_controller', 'hpreport_storage_vdisk',
-               'hpreport_storage_pdisk', 'multipath', 'systemdinit',
-               'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints',
-               'sudoers']
+    compare_files = ['sysvinit', 'mounts', 'netstat', 'ip_addresses',
+                     'network', 'interfaces', 'hosts', 'lvs', 'pvs', 'vgs',
+                     'fstab', 'powermt', 'omreport_version', 'ip_routes',
+                     'partitions', 'lspci', 'omreport_memory',
+                     'omreport_processors', 'omreport_nics', 'omreport_vdisk',
+                     'omreport_pdisk', 'hpreport_server', 'hpreport_memory',
+                     'hpreport_bios', 'hpreport_storage_controller',
+                     'hpreport_storage_vdisk', 'hpreport_storage_pdisk',
+                     'multipath', 'systemdinit', 'upstartinit', 'yum.conf',
+                     'dnf.conf', 'pcs_constraints', 'sudoers']
 
     # Add network config files
     for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
-        compare.append(os.path.basename(filename))
+        compare_files.append(os.path.basename(filename))
 
     # Add php files if detected
     if is_php_detected:
-        compare.append('php.ini')
+        compare_files.append('php.ini')
         if os.path.exists('/usr/bin/pecl'):
-            compare.append('pecl-list')
-
-    # Append all files in all subdirectories to the compare list
-    for directory in os.listdir(workdir):
-        if os.path.isdir(os.path.join(workdir, directory)):
-            for subdir_file in os.listdir(os.path.join(workdir, directory)):
-                if not os.path.join(directory, os.path.splitext(subdir_file)[0]) in compare:
-                    compare.append(os.path.join(directory, os.path.splitext(subdir_file)[0]))
+            compare_files.append('pecl-list')
 
     # Array to hold custom collection files and commands to compare
     additional_to_compare = []
@@ -178,18 +171,25 @@ def compare_files():
         try:
             cfgtype = Config.get(section, 'type').lower()
             if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
-                additional_to_compare.append(section)
+                additional_to_compare_files.append(section)
         except Exception, e:
             report_error(
                 "Check config file options for section %s: %s" % (section, e))
 
-    compare.extend(additional_to_compare)
+    compare_files.extend(additional_to_compare)
 
-    for filename in compare:
+    for filename in compare_files:
         pre_filename = os.path.join(workdir,
                                     "%s.%s" % (filename, options.pre_suffix))
         if os.path.exists(pre_filename):
-            run.get_diff(filename)
+            run.get_diff_files(filename)
+
+    # Report subdirectories at the subdir level unless ther verbose option is
+    # given, in which case report as usual
+    report_info("\nStarting sub-dir diffs...")
+    for directory in os.listdir(workdir):
+        if os.path.isdir(os.path.join(workdir, directory)):
+            run.get_diff_dir(directory)
 
     try:
         uname_pre_fd = open(
@@ -258,7 +258,7 @@ class dataGather:
         except IOError:
             report_error("Error copying %s" % w_filename)
 
-    def copy_dir(self, srcdir, destdir=None, fail_ok=False, sort=False):
+    def copy_dir(self, srcdir, file_pattern='.*', destdir=None, fail_ok=False, sort=False):
         # Did we override the destination
         if destdir is None:
             destdir = os.path.join(self.workdir, os.path.basename(os.path.dirname(srcdir)))
@@ -270,7 +270,7 @@ class dataGather:
 
         for root, dirs, files in os.walk(srcdir):
             for cfile in files:
-                if not os.path.islink(os.path.join(root, cfile)):
+                if re.match(file_pattern, cfile) and not os.path.islink(os.path.join(root, cfile)):
                     self.copy_file(os.path.join(root, cfile),
                                    destdir=os.path.join(destdir, root.replace(srcdir, '')),
                                    fail_ok=False,
@@ -320,7 +320,7 @@ class dataGather:
         if stdout:
             sys.stdout.writelines(output)
 
-    def get_diff(self, filename):
+    def get_diff_files(self, filename):
         global diffs_found_msg
         filename = os.path.join(self.workdir, filename)
         pre_filename = "%s.%s" % (filename, options.pre_suffix)
@@ -350,9 +350,48 @@ class dataGather:
         else:
             report_info("No differences against %s.%s" % (filename, options.pre_suffix))
 
+    def get_diff_dir(self, sdir):
+        diffs_found_msg = False
+        sdir = os.path.join(workdir,  sdir)
+        for pre_filename in glob.glob(sdir + '/*' + options.pre_suffix):
+            post_filename = "%s.%s" % (os.path.splitext(pre_filename)[0],
+                                       self.phase)
+
+            try:
+                pre_fd = open(pre_filename)
+                post_fd = open(post_filename)
+            except IOError, e:
+                report_error("Unable to open file %s: %s" %
+                             (e.filename, e.strerror))
+                return False
+
+            try:
+                diff_proc = subprocess.Popen(['diff', '--unified=0',
+                                              '--ignore-blank-lines',
+                                              '--ignore-space-change',
+                                              pre_filename, post_filename],
+                                             stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE,
+                                             shell=False)
+            except OSError, e:
+                report_error("Error running %s: %s" %
+                             (command[0], e.strerror))
+                return None
+
+            if diff_proc.wait() != 0:
+                diffs_found_msg = True
+                report_error("Differences found against %s:\n" % pre_filename)
+                sys.stdout.writelines(diff_proc.stdout.readlines())
+            elif options.verbose_enabled is True:
+                report_verbose("No differences against %s" % pre_filename)
+
+        if diffs_found_msg is False:
+            report_info("No differences found for files in %s" % sdir)
+
     def __init__(self, workdir, phase):
         self.workdir = workdir
         self.phase = phase
+
 
 desc = 'Record useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".'
 
@@ -686,10 +725,10 @@ run.copy_file('/etc/sudoers', fail_ok=False, sort=False)
 run.copy_dir('/etc/sudoers.d/', fail_ok=False, sort=False)
 if os.path.exists('/etc/network/interfaces.d'):
     run.copy_dir('/etc/network/interfaces.d/', fail_ok=False, sort=False)
-for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
-    run.copy_file(filename, fail_ok=False)
-for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
-    run.copy_file(filename, fail_ok=False)
+
+if os.path.exists('/etc/sysconfig/network-scripts/'):
+    run.copy_dir('/etc/sysconfig/network-scripts/', file_pattern='(ifcfg-|route-).*',
+                 fail_ok=False, sort=False)
 
 # copy custom files
 for section in Config.sections():
