@@ -83,12 +83,17 @@ def create_dir(tagdir, overwrite):
     workdir = os.path.join(tagdir, "configsnap")
     if os.path.isdir(workdir) and overwrite:
         try:
-            if any(options.phase in s for s in os.listdir(workdir)):
-                report_info(
-                    "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, workdir))
-                for reportfile in os.listdir(workdir):
-                    if options.phase in reportfile:
-                        os.remove(os.path.join(workdir, reportfile))
+            # We need to go through all subdirs as well
+            for root, dirs, files in os.walk(workdir):
+                if any(s.endswith(".%s" % options.phase) for s in files):
+                    report_info(
+                        "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, root))
+
+                # actual removal
+                for filename in files:
+                    if filename.endswith(".%s" % options.phase):
+                        os.remove(os.path.join(root, filename))
+
         except OSError, e:
             report_error("Unable to remove %s: %s" % (workdir, e))
             sys.exit(1)
@@ -348,8 +353,15 @@ class dataGather:
 
     def get_diff_dir(self, sdir):
         diffs_found_msg = False
+        all_pre_files = []
         sdir = os.path.join(workdir, sdir)
+
         for pre_filename in glob.glob(sdir + '/*' + options.pre_suffix):
+
+            # building list of all 'pre' files
+            bare_file = os.path.splitext(pre_filename)[0] + '.' + self.phase
+            all_pre_files.append(bare_file)
+
             post_filename = "%s.%s" % (os.path.splitext(pre_filename)[0],
                                        self.phase)
 
@@ -357,9 +369,8 @@ class dataGather:
                 pre_fd = open(pre_filename)
                 post_fd = open(post_filename)
             except IOError, e:
-                report_error("Unable to open file %s: %s" %
-                             (e.filename, e.strerror))
-                return False
+                report_error("- File removed: %s" % (e.filename))
+                continue
 
             try:
                 diff_proc = subprocess.Popen(['diff', '--unified=0',
@@ -384,10 +395,21 @@ class dataGather:
         if diffs_found_msg is False:
             report_info("No differences found for files in %s" % sdir)
 
+        # Looking for new files
+        for post_filename in glob.glob(sdir + '/*' + self.phase):
+            if post_filename not in all_pre_files:
+                report_error("+ File added: %s:" % post_filename)
+
     def __init__(self, workdir, phase):
         self.workdir = workdir
         self.phase = phase
 
+
+###################################################
+#
+#                   MAIN
+#
+###################################################
 
 desc = 'Record useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".'
 
@@ -453,11 +475,13 @@ os.environ['PATH'] += ':/usr/sbin:/sbin'
 
 if options.phase:
     phase = options.phase
-    for filename in os.listdir('.'):
-        if filename.endswith(".%s" % phase) and not options.compare_only:
-            report_error("Files for %s already exist in %s" % (phase,
-                                                               os.getcwd()))
-            sys.exit(1)
+    # We need to go into subdirs as well for checking
+    for root, dirs, files in os.walk(workdir):
+        for filename in files:
+            if filename.endswith(".%s" % phase) and not options.compare_only:
+                report_error("Files for %s already exist in %s" % (phase,
+                                                                   os.getcwd()))
+                sys.exit(1)
 else:
     now = datetime.datetime.now()
     phase = "%d%02d%02d%02d%02d" % (now.year, now.month, now.day,
