@@ -28,7 +28,7 @@ import shutil
 import tarfile
 
 
-version = "0.14"
+version = "0.15"
 diffs_found_msg = False
 is_php_detected = False
 
@@ -173,9 +173,12 @@ def compare_files():
             cfgtype = Config.get(section, 'type').lower()
             if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
                 additional_to_compare_files.append(section)
-        except Exception, e:
+        except ConfigParser.NoOptionError, e:
             report_error(
                 "Check config file options for section %s: %s" % (section, e))
+        except Exception, e:
+            report_error(
+                "Could not parse config file section %s: %s" % (section, e))
 
     compare_files.extend(additional_to_compare)
 
@@ -411,7 +414,10 @@ class dataGather:
 #
 ###################################################
 
-desc = 'Record useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".'
+desc = ("Record useful system state information, and compare to previous state "
+       "if run with PHASE containing \"post\" or \"rollback\".\nAn optional file, "
+       "/etc/configsnap/additional.conf, can be provided for extra files, "
+       "directories or command to register during configsnap execution.")
 
 parser = optparse.OptionParser(description=desc)
 parser.add_option('-w', '--overwrite',
@@ -512,9 +518,10 @@ if os.path.exists(customcollectionfile):
 # Ensure each section has a valid Type
 for section in Config.sections():
     if Config.has_option(section, 'type'):
-        if Config.get(section, 'type').lower() != "file" and Config.get(section, 'type').lower() != "command":
+        if not re.match('^(file|directory|command)$', Config.get(section, 'type').lower()):
+        #if Config.get(section, 'type').lower() != "file" and Config.get(section, 'type').lower() != "command":
             report_error(
-                "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
+                "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\", \"directory\" or \"command\"" % section)
 
 # Get a list of processes running on the server
 procs = subprocess.Popen(
@@ -720,9 +727,12 @@ for section in Config.sections():
             report_info("Running custom command %s: %s" % (section, cmd))
             run.run_command(
                 cmd.split(), section, fail_ok=failokcfg, sort=sortcfg)
-    except Exception, e:
+    except ConfigParser.NoOptionError, e:
         report_error(
             "Check config file options for section %s: %s" % (section, e))
+    except Exception, e:
+        report_error(
+            "Could not parse config file section %s: %s" % (section, e))
 
 # copy important files
 report_info("Copying files...")
@@ -750,24 +760,33 @@ if os.path.exists('/etc/sysconfig/network-scripts/'):
     run.copy_dir('/etc/sysconfig/network-scripts/', file_pattern='(ifcfg-|route-).*',
                  fail_ok=False, sort=False)
 
-# copy custom files
+# copy custom files and directories
 for section in Config.sections():
     try:
+        # Optional options
+        if Config.has_option(section, 'failok') and Config.get(section, 'failok').lower() == "true":
+            failokcfg = True
+        # If failok is anything except true...
+        else:
+                failokcfg = False
+
         cfgtype = Config.get(section, 'type').lower()
         if cfgtype == 'file':
             cpfile = Config.get(section, 'file')
-
-            # Optional options
-            if Config.has_option(section, 'failok') and Config.get(section, 'failok').lower() == "true":
-                failokcfg = True
-            # If failok is anything except true...
-            else:
-                failokcfg = False
-
             run.copy_file(cpfile, fail_ok=failokcfg)
-    except Exception, e:
+
+        elif cfgtype == 'directory':
+            cpdir = Config.get(section, 'directory')
+            if not cpdir.endswith("/"):
+                cpdir = cpdir + '/'
+            run.copy_dir(cpdir, fail_ok=failokcfg, sort=False)
+
+    except ConfigParser.NoOptionError, e:
         report_error(
             "Check config file options for section %s: %s" % (section, e))
+    except Exception, e:
+        report_error(
+            "Could not parse config file section %s: %s" % (section, e))
 
 report_info("\n")
 
