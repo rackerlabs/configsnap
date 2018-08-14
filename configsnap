@@ -417,7 +417,7 @@ class dataGather:
 desc = ("Record useful system state information, and compare to previous state "
         "if run with PHASE containing \"post\" or \"rollback\".\nAn optional file, "
         "/etc/configsnap/additional.conf, can be provided for extra files, "
-        "directories or command to register during configsnap execution.")
+        "directories or commands to register during configsnap execution.")
 
 parser = optparse.OptionParser(description=desc)
 parser.add_option('-w', '--overwrite',
@@ -519,7 +519,6 @@ if os.path.exists(customcollectionfile):
 for section in Config.sections():
     if Config.has_option(section, 'type'):
         if not re.match('^(file|directory|command)$', Config.get(section, 'type').lower()):
-            # if Config.get(section, 'type').lower() != "file" and Config.get(section, 'type').lower() != "command":
             report_error(
                 "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\", \"directory\" or \"command\"" % section)
 
