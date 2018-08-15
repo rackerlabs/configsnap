@@ -5,19 +5,24 @@
 
 [Custom Collection]
 
-Commands are all run as root, so the custom collection configuration file must be owned by root and not read or writable by other users. The file format is:
+Commands are all run as root, so the custom collection configuration file must
+be owned by root and not read or writable by other users. The file format is:
 
 \ [section] - The name of the output file, and the status message for this collection
- Type - "command", to run a command, or "file" to save a file
+ Type - "command", to run a command, "file" to save a file, or "directory" to
+ recursively backup a directory.
  Command - When Type = command, the fully qualified command to run, e.g. /bin/ss -tanp
  File - The fully qualified path to a file to save, e.g. /etc/debconf.conf
+ Directory - The path to the directory with trailing '/'
 
 For "command", there is the following additional optional setting:
  Sort - save output sorted (default: False)
 
 For either "command" or "file", the are the follow additional optional settings:
- Failok - True/False - Whether to report problems running the command or copying the file (default: False)
- Compare - True/False - Whether to compare output when phase contains post or rollback (default: False)
+ Failok - True/False - Whether to report problems running the command or
+ copying the file (default: False)
+ Compare - True/False - Whether to compare output when phase contains post or
+ rollback (default: False)
 
 Examples:
 
@@ -31,4 +36,10 @@ Examples:
  File: /etc/debconf.conf
  Failok: True
 
-These would record two files per run, psspecial.phase and debconf.conf.phase.
+\ [ssh]
+ Type: directory
+ Directory: /etc/ssh/
+
+These would record two files per run, psspecial.phase and debconf.conf.phase,
+along with the content of the /etc/ssh/ directory with sub-files appended with
+.phase.

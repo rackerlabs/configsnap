@@ -1,8 +1,11 @@
 # configsnap
 
-Records useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".
+Records useful system state information, and compare to previous state if run
+with PHASE containing "post" or "rollback".
 
-Tested on RHEL, CentOS, Fedora and Ubuntu, but should also work on other derivatives. For other distros, config will be collected where the commands or file locations match RHEL or Ubuntu.
+Tested on RHEL, CentOS, Fedora and Ubuntu, but should also work on other
+derivatives. For other distros, config will be collected where the commands or
+file locations match RHEL or Ubuntu.
 
 ```
 Usage: configsnap [options]
@@ -43,27 +46,29 @@ Getting cluster status...
 Getting misc (dmesg, lspci, sysctl)...
 Getting Dell hardware information...
 Copying files...
- /boot/grub/grub.conf 
- /etc/fstab 
- /etc/hosts 
- /etc/sysconfig/network 
- /etc/yum.conf 
- /proc/cmdline 
- /proc/meminfo 
- /proc/mounts 
- /proc/scsi/scsi 
- /etc/sysconfig/network-scripts/ifcfg-eth3 
- /etc/sysconfig/network-scripts/ifcfg-lo 
- /etc/sysconfig/network-scripts/ifcfg-eth1 
- /etc/sysconfig/network-scripts/ifcfg-eth0 
- /etc/sysconfig/network-scripts/ifcfg-eth2 
- /etc/sysconfig/network-scripts/route-eth2 
+ /boot/grub/grub.conf
+ /etc/fstab
+ /etc/hosts
+ /etc/sysconfig/network
+ /etc/yum.conf
+ /proc/cmdline
+ /proc/meminfo
+ /proc/mounts
+ /proc/scsi/scsi
+ /etc/sysconfig/network-scripts/ifcfg-eth3
+ /etc/sysconfig/network-scripts/ifcfg-lo
+ /etc/sysconfig/network-scripts/ifcfg-eth1
+ /etc/sysconfig/network-scripts/ifcfg-eth0
+ /etc/sysconfig/network-scripts/ifcfg-eth2
+ /etc/sysconfig/network-scripts/route-eth2
 
 
 Finished! Backups were saved to /root/junepatching/configsnap/*.pre
 ```
 
-Custom collection of additional command output (Type: command) and files (Type: file) can be configured in the file /etc/configsnap/additional.conf, for example:
+Custom collection of additional command output (Type: command) and files (Type:
+file) can be configured in the file /etc/configsnap/additional.conf, for
+example:
 
 ```
 [psspecial]
