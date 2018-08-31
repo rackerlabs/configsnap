@@ -767,7 +767,7 @@ for section in Config.sections():
             failokcfg = True
         # If failok is anything except true...
         else:
-                failokcfg = False
+            failokcfg = False
 
         cfgtype = Config.get(section, 'type').lower()
         if cfgtype == 'file':
@@ -776,9 +776,14 @@ for section in Config.sections():
 
         elif cfgtype == 'directory':
             cpdir = Config.get(section, 'directory')
+            if Config.has_option(section, 'file_pattern'):
+                config_file_pattern = Config.get(section, 'file_pattern')
+            else:
+                config_file_pattern = '.*'
+
             if not cpdir.endswith("/"):
                 cpdir = cpdir + '/'
-            run.copy_dir(cpdir, fail_ok=failokcfg, sort=False)
+            run.copy_dir(cpdir, file_pattern=config_file_pattern, fail_ok=failokcfg, sort=False)
 
     except ConfigParser.NoOptionError, e:
         report_error(
