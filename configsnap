@@ -395,13 +395,15 @@ class dataGather:
             elif options.verbose_enabled is True:
                 report_verbose("No differences against %s" % pre_filename)
 
-        if diffs_found_msg is False:
-            report_info("No differences found for files in %s" % sdir)
-
         # Looking for new files
         for post_filename in glob.glob(sdir + '/*' + self.phase):
             if post_filename not in all_pre_files:
                 report_error("+ File added: %s:" % post_filename)
+                diffs_found_msg = True
+
+        if diffs_found_msg is False:
+            report_info("No differences found for files in %s" % sdir)
+
 
     def __init__(self, workdir, phase):
         self.workdir = workdir
