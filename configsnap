@@ -404,7 +404,6 @@ class dataGather:
         if diffs_found_msg is False:
             report_info("No differences found for files in %s" % sdir)
 
-
     def __init__(self, workdir, phase):
         self.workdir = workdir
         self.phase = phase
