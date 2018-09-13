@@ -31,6 +31,7 @@ import tarfile
 version = "0.15"
 diffs_found_msg = False
 is_php_detected = False
+is_apache_detected = False
 
 
 def report_verbose(message):
@@ -165,6 +166,11 @@ def compare_files():
         compare_files.append('php.ini')
         if os.path.exists('/usr/bin/pecl'):
             compare_files.append('pecl-list')
+
+    # Add apache files if detected
+    if is_apache_detected:
+        compare_files.append('httpd_modules')
+        compare_files.append('httpd_vhosts')
 
     # Array to hold custom collection files and commands to compare
     additional_to_compare = []
@@ -694,6 +700,7 @@ if os.path.exists(hpasmpath):
 
 if '/usr/sbin/httpd' in procs_output or '/usr/sbin/httpd.worker' in procs_output:
     report_info("Getting Apache vhosts and modules...")
+    is_apache_detected = True
     run.run_command(
         ['httpd', '-S'], 'httpd_vhosts', fail_ok=False, sort=False)
     run.run_command(
