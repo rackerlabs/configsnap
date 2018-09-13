@@ -28,7 +28,7 @@ import shutil
 import tarfile
 
 
-version = "0.14"
+version = "0.15"
 diffs_found_msg = False
 is_php_detected = False
 
@@ -83,12 +83,17 @@ def create_dir(tagdir, overwrite):
     workdir = os.path.join(tagdir, "configsnap")
     if os.path.isdir(workdir) and overwrite:
         try:
-            if any(options.phase in s for s in os.listdir(workdir)):
-                report_info(
-                    "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, workdir))
-                for reportfile in os.listdir(workdir):
-                    if options.phase in reportfile:
-                        os.remove(os.path.join(workdir, reportfile))
+            # We need to go through all subdirs as well
+            for root, dirs, files in os.walk(workdir):
+                if any(s.endswith(".%s" % options.phase) for s in files):
+                    report_info(
+                        "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, root))
+
+                # actual removal
+                for filename in files:
+                    if filename.endswith(".%s" % options.phase):
+                        os.remove(os.path.join(root, filename))
+
         except OSError, e:
             report_error("Unable to remove %s: %s" % (workdir, e))
             sys.exit(1)
@@ -139,38 +144,27 @@ def compare_files():
         report_error("Unable to diff, as no " + options.pre_suffix + " pre files")
         sys.exit(0)
 
-    report_info("This is  %s  phase so performing diffs..." % phase)
+    report_info("\nThis is %s phase so performing file diffs..." % phase)
 
     if 'rollback' in phase:
-        run.get_diff('packages')
+        run.get_diff_files('packages')
 
-    compare = ['sysvinit', 'mounts', 'netstat', 'ip_addresses', 'network',
-               'interfaces', 'hosts', 'lvs', 'pvs', 'vgs', 'fstab', 'powermt',
-               'omreport_version', 'ip_routes', 'partitions', 'lspci',
-               'omreport_memory', 'omreport_processors', 'omreport_nics',
-               'omreport_vdisk', 'omreport_pdisk', 'hpreport_server',
-               'hpreport_memory', 'hpreport_bios',
-               'hpreport_storage_controller', 'hpreport_storage_vdisk',
-               'hpreport_storage_pdisk', 'multipath', 'systemdinit',
-               'upstartinit', 'yum.conf', 'dnf.conf', 'pcs_constraints',
-               'sudoers']
-
-    # Add network config files
-    for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
-        compare.append(os.path.basename(filename))
+    compare_files = ['sysvinit', 'mounts', 'netstat', 'ip_addresses',
+                     'network', 'interfaces', 'hosts', 'lvs', 'pvs', 'vgs',
+                     'fstab', 'powermt', 'omreport_version', 'ip_routes',
+                     'partitions', 'lspci', 'omreport_memory',
+                     'omreport_processors', 'omreport_nics', 'omreport_vdisk',
+                     'omreport_pdisk', 'hpreport_server', 'hpreport_memory',
+                     'hpreport_bios', 'hpreport_storage_controller',
+                     'hpreport_storage_vdisk', 'hpreport_storage_pdisk',
+                     'multipath', 'systemdinit', 'upstartinit', 'yum.conf',
+                     'dnf.conf', 'pcs_constraints', 'sudoers']
 
     # Add php files if detected
     if is_php_detected:
-        compare.append('php.ini')
+        compare_files.append('php.ini')
         if os.path.exists('/usr/bin/pecl'):
-            compare.append('pecl-list')
-
-    # Append all files in all subdirectories to the compare list
-    for directory in os.listdir(workdir):
-        if os.path.isdir(os.path.join(workdir, directory)):
-            for subdir_file in os.listdir(os.path.join(workdir, directory)):
-                if not os.path.join(directory, os.path.splitext(subdir_file)[0]) in compare:
-                    compare.append(os.path.join(directory, os.path.splitext(subdir_file)[0]))
+            compare_files.append('pecl-list')
 
     # Array to hold custom collection files and commands to compare
     additional_to_compare = []
@@ -178,18 +172,28 @@ def compare_files():
         try:
             cfgtype = Config.get(section, 'type').lower()
             if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
-                additional_to_compare.append(section)
-        except Exception, e:
+                additional_to_compare_files.append(section)
+        except ConfigParser.NoOptionError, e:
             report_error(
                 "Check config file options for section %s: %s" % (section, e))
+        except Exception, e:
+            report_error(
+                "Could not parse config file section %s: %s" % (section, e))
 
-    compare.extend(additional_to_compare)
+    compare_files.extend(additional_to_compare)
 
-    for filename in compare:
+    for filename in compare_files:
         pre_filename = os.path.join(workdir,
                                     "%s.%s" % (filename, options.pre_suffix))
         if os.path.exists(pre_filename):
-            run.get_diff(filename)
+            run.get_diff_files(filename)
+
+    # Report subdirectories at the subdir level unless ther verbose option is
+    # given, in which case report as usual
+    report_info("\nStarting sub-dir diffs...")
+    for directory in os.listdir(workdir):
+        if os.path.isdir(os.path.join(workdir, directory)):
+            run.get_diff_dir(directory)
 
     try:
         uname_pre_fd = open(
@@ -224,6 +228,13 @@ class dataGather:
         if destdir is None:
             destdir = self.workdir
 
+        if not os.path.exists(destdir):
+            try:
+                os.makedirs(destdir)
+            except OSError, e:
+                report_error("Unable to create directory %s" % (workdir, e))
+                sys.exit(1)
+
         if not os.path.exists(r_filename):
             if not fail_ok:
                 report_error(" %s does not exist" % r_filename)
@@ -251,7 +262,7 @@ class dataGather:
         except IOError:
             report_error("Error copying %s" % w_filename)
 
-    def copy_dir(self, srcdir, destdir=None, fail_ok=False, sort=False):
+    def copy_dir(self, srcdir, file_pattern='.*', destdir=None, fail_ok=False, sort=False):
         # Did we override the destination
         if destdir is None:
             destdir = os.path.join(self.workdir, os.path.basename(os.path.dirname(srcdir)))
@@ -261,19 +272,15 @@ class dataGather:
                 report_error(" Directory %s does not exist" % destdir)
             return
 
-        if not os.path.exists(destdir):
-            try:
-                os.makedirs(destdir)
-            except OSError, e:
-                report_error("Unable to create directory %s" % (workdir, e))
-                sys.exit(1)
+        for root, dirs, files in os.walk(srcdir):
+            for cfile in files:
+                if re.match(file_pattern, cfile) and not os.path.islink(os.path.join(root, cfile)):
+                    self.copy_file(os.path.join(root, cfile),
+                                   destdir=os.path.join(destdir, root.replace(srcdir, '')),
+                                   fail_ok=False,
+                                   sort=False)
 
-        for filename in os.listdir(srcdir):
-            # We are explicitly overriding the destdir for the copy_file function
-            self.copy_file(srcdir + filename, destdir=destdir, fail_ok=False, sort=False)
-
-    def run_command(self, command, filename, fail_ok=False,
-                    sort=False, stdout=False, shell=False):
+    def run_command(self, command, filename, fail_ok=False, sort=False, stdout=False, shell=False):
         try:
             command_proc = subprocess.Popen(
                 command, stdout=subprocess.PIPE,
@@ -317,7 +324,7 @@ class dataGather:
         if stdout:
             sys.stdout.writelines(output)
 
-    def get_diff(self, filename):
+    def get_diff_files(self, filename):
         global diffs_found_msg
         filename = os.path.join(self.workdir, filename)
         pre_filename = "%s.%s" % (filename, options.pre_suffix)
@@ -347,11 +354,71 @@ class dataGather:
         else:
             report_info("No differences against %s.%s" % (filename, options.pre_suffix))
 
+    def get_diff_dir(self, sdir):
+        diffs_found_msg = False
+        all_pre_files = []
+        sdir = os.path.join(workdir, sdir)
+
+        for pre_filename in glob.glob(sdir + '/*' + options.pre_suffix):
+
+            # building list of all 'pre' files
+            bare_file = os.path.splitext(pre_filename)[0] + '.' + self.phase
+            all_pre_files.append(bare_file)
+
+            post_filename = "%s.%s" % (os.path.splitext(pre_filename)[0],
+                                       self.phase)
+
+            try:
+                pre_fd = open(pre_filename)
+                post_fd = open(post_filename)
+            except IOError, e:
+                report_error("- File removed: %s" % (e.filename))
+                continue
+
+            try:
+                diff_proc = subprocess.Popen(['diff', '--unified=0',
+                                              '--ignore-blank-lines',
+                                              '--ignore-space-change',
+                                              pre_filename, post_filename],
+                                             stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE,
+                                             shell=False)
+            except OSError, e:
+                report_error("Error running %s: %s" %
+                             (command[0], e.strerror))
+                return None
+
+            if diff_proc.wait() != 0:
+                diffs_found_msg = True
+                report_error("Differences found against %s:\n" % pre_filename)
+                sys.stdout.writelines(diff_proc.stdout.readlines())
+            elif options.verbose_enabled is True:
+                report_verbose("No differences against %s" % pre_filename)
+
+        # Looking for new files
+        for post_filename in glob.glob(sdir + '/*' + self.phase):
+            if post_filename not in all_pre_files:
+                report_error("+ File added: %s:" % post_filename)
+                diffs_found_msg = True
+
+        if diffs_found_msg is False:
+            report_info("No differences found for files in %s" % sdir)
+
     def __init__(self, workdir, phase):
         self.workdir = workdir
         self.phase = phase
 
-desc = 'Record useful system state information, and compare to previous state if run with PHASE containing "post" or "rollback".'
+
+###################################################
+#
+#                   MAIN
+#
+###################################################
+
+desc = ("Record useful system state information, and compare to previous state "
+        "if run with PHASE containing \"post\" or \"rollback\".\nAn optional file, "
+        "/etc/configsnap/additional.conf, can be provided for extra files, "
+        "directories or commands to register during configsnap execution.")
 
 parser = optparse.OptionParser(description=desc)
 parser.add_option('-w', '--overwrite',
@@ -415,11 +482,13 @@ os.environ['PATH'] += ':/usr/sbin:/sbin'
 
 if options.phase:
     phase = options.phase
-    for filename in os.listdir('.'):
-        if filename.endswith(".%s" % phase) and not options.compare_only:
-            report_error("Files for %s already exist in %s" % (phase,
-                                                               os.getcwd()))
-            sys.exit(1)
+    # We need to go into subdirs as well for checking
+    for root, dirs, files in os.walk(workdir):
+        for filename in files:
+            if filename.endswith(".%s" % phase) and not options.compare_only:
+                report_error("Files for %s already exist in %s" % (phase,
+                                                                   os.getcwd()))
+                sys.exit(1)
 else:
     now = datetime.datetime.now()
     phase = "%d%02d%02d%02d%02d" % (now.year, now.month, now.day,
@@ -450,9 +519,9 @@ if os.path.exists(customcollectionfile):
 # Ensure each section has a valid Type
 for section in Config.sections():
     if Config.has_option(section, 'type'):
-        if Config.get(section, 'type').lower() != "file" and Config.get(section, 'type').lower() != "command":
+        if not re.match('^(file|directory|command)$', Config.get(section, 'type').lower()):
             report_error(
-                "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\" or \"command\"" % section)
+                "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\", \"directory\" or \"command\"" % section)
 
 # Get a list of processes running on the server
 procs = subprocess.Popen(
@@ -481,8 +550,8 @@ if os.path.exists('/sbin/lvs'):
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
         vgcfg.wait()
-    except:
-        report_error("vgcfgbackup failed")
+    except OSError, e:
+        report_error("Error running vgcfgbackup: %s" % e.strerror)
     else:
         if vgcfg.returncode != 0:
             report_error("vgcfg exited with return code %d" % vgcfg.returncode)
@@ -658,9 +727,12 @@ for section in Config.sections():
             report_info("Running custom command %s: %s" % (section, cmd))
             run.run_command(
                 cmd.split(), section, fail_ok=failokcfg, sort=sortcfg)
-    except Exception, e:
+    except ConfigParser.NoOptionError, e:
         report_error(
             "Check config file options for section %s: %s" % (section, e))
+    except Exception, e:
+        report_error(
+            "Could not parse config file section %s: %s" % (section, e))
 
 # copy important files
 report_info("Copying files...")
@@ -683,29 +755,43 @@ run.copy_file('/etc/sudoers', fail_ok=False, sort=False)
 run.copy_dir('/etc/sudoers.d/', fail_ok=False, sort=False)
 if os.path.exists('/etc/network/interfaces.d'):
     run.copy_dir('/etc/network/interfaces.d/', fail_ok=False, sort=False)
-for filename in glob.glob('/etc/sysconfig/network-scripts/ifcfg-*'):
-    run.copy_file(filename, fail_ok=False)
-for filename in glob.glob('/etc/sysconfig/network-scripts/route-*'):
-    run.copy_file(filename, fail_ok=False)
 
-# copy custom files
+if os.path.exists('/etc/sysconfig/network-scripts/'):
+    run.copy_dir('/etc/sysconfig/network-scripts/', file_pattern='(ifcfg-|route-).*',
+                 fail_ok=False, sort=False)
+
+# copy custom files and directories
 for section in Config.sections():
     try:
+        # Optional options
+        if Config.has_option(section, 'failok') and Config.get(section, 'failok').lower() == "true":
+            failokcfg = True
+        # If failok is anything except true...
+        else:
+            failokcfg = False
+
         cfgtype = Config.get(section, 'type').lower()
         if cfgtype == 'file':
             cpfile = Config.get(section, 'file')
-
-            # Optional options
-            if Config.has_option(section, 'failok') and Config.get(section, 'failok').lower() == "true":
-                failokcfg = True
-            # If failok is anything except true...
-            else:
-                failokcfg = False
-
             run.copy_file(cpfile, fail_ok=failokcfg)
-    except Exception, e:
+
+        elif cfgtype == 'directory':
+            cpdir = Config.get(section, 'directory')
+            if Config.has_option(section, 'file_pattern'):
+                config_file_pattern = Config.get(section, 'file_pattern')
+            else:
+                config_file_pattern = '.*'
+
+            if not cpdir.endswith("/"):
+                cpdir = cpdir + '/'
+            run.copy_dir(cpdir, file_pattern=config_file_pattern, fail_ok=failokcfg, sort=False)
+
+    except ConfigParser.NoOptionError, e:
         report_error(
             "Check config file options for section %s: %s" % (section, e))
+    except Exception, e:
+        report_error(
+            "Could not parse config file section %s: %s" % (section, e))
 
 report_info("\n")
 
@@ -716,6 +802,9 @@ if os.path.exists('/usr/bin/php'):
     run.copy_file('/etc/php.ini', fail_ok=True)
     if os.path.exists('/etc/php.d'):
         run.copy_dir('/etc/php.d/', fail_ok=False, sort=False)
+
+    if os.path.exists('/etc/php/'):
+        run.copy_dir('/etc/php/', fail_ok=False, sort=False)
 
     run.run_command(
         ['php', '-m'], 'php_modules', fail_ok=False, sort=False)

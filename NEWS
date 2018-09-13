@@ -1,5 +1,8 @@
 configsnap NEWS
 
+0.15
+ * Added new function `copy_dir` to backup the content of an entire directory
+
 0.14
  * Adjusted -w option to only overwrite specific tagged files
  * Add option to compare existing files without gathering new data using the -C/--compare-only option
@@ -29,7 +32,7 @@ configsnap NEWS
  * Added man page
  * Record dm-multipath information
  * Continue if lvm isn't present
- * Allow PowerPath to be present, but with no LUNs 
+ * Allow PowerPath to be present, but with no LUNs
 
 0.10
  * Initial public release
