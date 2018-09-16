@@ -38,7 +38,7 @@ RPM_RPMDIR := $(shell rpm -E '%{_rpmdir}')
 
 all: variables
 
-fedora: ${BUILD_PKGS}
+epel: ${BUILD_PKGS}
 	@echo "Building release ${VERSION}_${RELEASE} for $@"
 	tar -C ${BUILD_ROOT} -czvf ${BUILD_ROOT}/${VERSION}.tar.gz ${BUILD_DIR}
 	cp ${BUILD_ROOT}/${VERSION}.tar.gz ${RPM_SRCDIR}
