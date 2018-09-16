@@ -1,0 +1,4 @@
+FROM fedora:latest
+WORKDIR /root/configsnap
+RUN dnf install -y git rpm-build rpm-devel rpmlint make python rpmdevtools help2man python2-devel
+CMD rpmdev-setuptree && make fedora

@@ -1,0 +1,4 @@
+FROM centos:7
+WORKDIR /root/configsnap
+RUN yum install -y git rpm-build rpm-devel rpmlint make python rpmdevtools help2man python2-devel
+CMD rpmdev-setuptree && make fedora
