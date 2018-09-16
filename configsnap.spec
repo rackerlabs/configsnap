@@ -1,12 +1,10 @@
 Name:          configsnap
-Version:       0.14
+Version:       0.15
 Release:       1%{?dist}
 Summary:       Record and compare system state
 License:       ASL 2.0
 URL:           https://github.com/rackerlabs/%{name}
 Source0:       https://github.com/rackerlabs/%{name}/archive/%{version}.tar.gz
-# Changes the python shebang to python2
-Patch0:        python_executable.patch
 BuildArch:     noarch
 BuildRequires: python2-devel
 BuildRequires: help2man
@@ -17,7 +15,6 @@ with a previous state and identify changes
 
 %prep
 %setup -q
-%patch0 -p0
 
 %build
 help2man --include=%{name}.help2man --no-info ./%{name} -o %{name}.man
@@ -42,6 +39,10 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
+* Sat Sep 15 2018 Nick Rhodes <nrhodes91@gmail.com> - 0.15-1
+- Added copy_dir function to recursively backup and diff directories
+- Add ability to use copy_dir in additional.conf along with a file pattern match
+
 * Tue Jul 31 2018 Paolo Gigante <paolo.gigante.sa@gmail.com> - 0.14-1
 - Adjusted -w option to only overwrite specific tagged files
 - Add option to compare existing files without gathering new data using the -C/--compare-only option
