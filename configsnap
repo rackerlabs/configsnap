@@ -178,7 +178,7 @@ def compare_files():
         try:
             cfgtype = Config.get(section, 'type').lower()
             if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
-                additional_to_compare_files.append(section)
+                additional_to_compare.append(section)
         except ConfigParser.NoOptionError, e:
             report_error(
                 "Check config file options for section %s: %s" % (section, e))
