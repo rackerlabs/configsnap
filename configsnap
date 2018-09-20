@@ -777,10 +777,17 @@ for section in Config.sections():
         else:
             failokcfg = False
 
+        if Config.has_option(section, 'sort') and Config.get(section, 'sort').lower() == "true":
+            sortcfg = True
+        # If sort is anything except true...
+        else:
+            sortcfg = False
+
+
         cfgtype = Config.get(section, 'type').lower()
         if cfgtype == 'file':
             cpfile = Config.get(section, 'file')
-            run.copy_file(cpfile, fail_ok=failokcfg)
+            run.copy_file(cpfile, fail_ok=failokcfg, sort=sortcfg)
 
         elif cfgtype == 'directory':
             cpdir = Config.get(section, 'directory')
