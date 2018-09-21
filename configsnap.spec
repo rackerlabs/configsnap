@@ -25,10 +25,12 @@ help2man --include=%{name}.help2man --no-info ./%{name} -o %{name}.man
 %install
 mkdir -p %{buildroot}%{_sbindir} \
   %{buildroot}%{_mandir}/man1 \
+  %{buildroot}%{_usr}/lib/%{name} \
   %{buildroot}%{_sysconfdir}/%{name}
 install -p -m 0755 %{name} %{buildroot}%{_sbindir}
 install -p -m 0644 %{name}.man %{buildroot}%{_mandir}/man1/%{name}.1
 install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional.conf
+install -p -m 0600 defaults.conf %{buildroot}%{_usr}/lib/%{name}/defaults.conf
 
 %files
 %{!?_licensedir:%global license %doc}
@@ -37,6 +39,7 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %doc NEWS
 %doc MAINTAINERS.md
 %config(noreplace) %{_sysconfdir}/%{name}/additional.conf
+%config %{_usr}/lib/%{name}/defaults.conf
 %{_mandir}/man1/%{name}.1*
 %{_sbindir}/%{name}
 %{_sysconfdir}/%{name}

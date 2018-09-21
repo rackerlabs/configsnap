@@ -150,16 +150,15 @@ def compare_files():
     if 'rollback' in phase:
         run.get_diff_files('packages')
 
-    compare_files = ['sysvinit', 'mounts', 'netstat', 'ip_addresses',
-                     'network', 'interfaces', 'hosts', 'lvs', 'pvs', 'vgs',
-                     'fstab', 'powermt', 'omreport_version', 'ip_routes',
+    compare_files = ['sysvinit', 'netstat', 'ip_addresses', 'lvs', 'pvs',
+                     'vgs', 'powermt', 'omreport_version', 'ip_routes',
                      'partitions', 'lspci', 'omreport_memory',
                      'omreport_processors', 'omreport_nics', 'omreport_vdisk',
                      'omreport_pdisk', 'hpreport_server', 'hpreport_memory',
                      'hpreport_bios', 'hpreport_storage_controller',
                      'hpreport_storage_vdisk', 'hpreport_storage_pdisk',
-                     'multipath', 'systemdinit', 'upstartinit', 'yum.conf',
-                     'dnf.conf', 'pcs_constraints', 'sudoers']
+                     'multipath', 'systemdinit', 'upstartinit',
+                     'pcs_constraints']
 
     # Add php files if detected
     if is_php_detected:
@@ -501,6 +500,7 @@ else:
                                     now.hour, now.minute)
 
 # Load custom collection list
+StandardCollectionFile = '/home/paolo/Scripts/configsnap/defaults.conf'
 customcollectionfile = '/etc/configsnap/additional.conf'
 Config = ConfigParser.ConfigParser()
 
@@ -509,18 +509,19 @@ if options.compare_only:
     compare_files()
     sys.exit(0)
 
-if os.path.exists(customcollectionfile):
-    # Check file is owned by root and not read/writable by anyone else
-    st = os.stat(customcollectionfile)
-    if st.st_uid != 0:
-        report_error("Custom collection file %s not owned by root, ignoring" %
-                     customcollectionfile)
-    elif oct(st.st_mode)[-2:] != '00':
-        report_error("Custom collection file %s is read or writable by non-root, ignoring" %
-                     customcollectionfile)
-    else:
-        # Only read in the config file if the above checks have passed
-        Config.read(customcollectionfile)
+for collectionFiles in StandardCollectionFile, customcollectionfile:
+    if os.path.exists(collectionFiles):
+        # Check file is owned by root and not read/writable by anyone else
+        st = os.stat(collectionFiles)
+        if st.st_uid != 0:
+            report_error("Collection file %s not owned by root, ignoring" %
+                         collectionFiles)
+        elif oct(st.st_mode)[-2:] != '00':
+            report_error("Collection file %s is read or writable by non-root, ignoring" %
+                         collectionFiles)
+        else:
+            # Only read in the config file if the above checks have passed
+            Config.read(collectionFiles)
 
 # Ensure each section has a valid Type
 for section in Config.sections():
@@ -743,22 +744,6 @@ for section in Config.sections():
 
 # copy important files
 report_info("Copying files...")
-run.copy_file('/boot/grub/grub.conf', fail_ok=True)
-run.copy_file('/boot/grub2/grubenv', fail_ok=True)
-run.copy_file('/etc/default/grub', fail_ok=True)
-run.copy_file('/etc/fstab', fail_ok=False)
-run.copy_file('/etc/hosts', fail_ok=False)
-run.copy_file('/etc/sysconfig/network', fail_ok=True)
-run.copy_file('/etc/network/interfaces', fail_ok=True)
-run.copy_file('/etc/cluster/cluster.conf', fail_ok=True)
-run.copy_file('/etc/yum.conf', fail_ok=True)
-run.copy_file('/etc/dnf/dnf.conf', fail_ok=True)
-run.copy_file('/etc/apt/sources.list', fail_ok=True)
-run.copy_file('/proc/cmdline', fail_ok=False)
-run.copy_file('/proc/meminfo', fail_ok=False)
-run.copy_file('/proc/mounts', fail_ok=False, sort=False)
-run.copy_file('/proc/scsi/scsi', fail_ok=False, sort=False)
-run.copy_file('/etc/sudoers', fail_ok=False, sort=False)
 run.copy_dir('/etc/sudoers.d/', fail_ok=False, sort=False)
 if os.path.exists('/etc/network/interfaces.d'):
     run.copy_dir('/etc/network/interfaces.d/', fail_ok=False, sort=False)
