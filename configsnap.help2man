@@ -8,38 +8,72 @@
 Commands are all run as root, so the custom collection configuration file must
 be owned by root and not read or writable by other users. The file format is:
 
-\ [section] - The name of the output file, and the status message for this collection
- Type - "command", to run a command, "file" to save a file, or "directory" to
+\ [section]
+.RS
+The name of the output file, and the status message for this collection
+.RE
+ Type
+.RS
+"command", to run a command, "file" to save a file, or "directory" to
  recursively backup a directory.
- Command - When Type = command, the fully qualified command to run, e.g. /bin/ss -tanp
- File - The fully qualified path to a file to save, e.g. /etc/debconf.conf
+.RE
+ Command
+.RS
+When Type = command, the fully qualified command to run, e.g. /bin/ss -tanp
+.RE
+ File
+.RS
+The fully qualified path to a file to save, e.g. /etc/debconf.conf
  Directory - The path to the directory with trailing '/'
+.RE
 
 For "command", there is the following additional optional setting:
- Sort - save output sorted (default: False)
+ Sort
+.RS
+save output sorted (default: False)
+.RE
 
 For either "command" or "file", the are the follow additional optional settings:
- Failok - True/False - Whether to report problems running the command or
- copying the file (default: False)
- Compare - True/False - Whether to compare output when phase contains post or
- rollback (default: False)
+
+\ Failok
+.RS
+{True | False } Whether to report problems running the command or copying the file (default: False)
+.RE
+\ Compare
+.RS
+{True | False} Whether to compare output when phase contains post or rollback (default: False)
+.RE
 
 Examples:
 
-\ [psspecial]
- Type: command
- Command: /bin/ps -aux
- Compare: True
+.RE
+  [psspecial]
+  Type: command
+  Command: /bin/ps -aux
+  Compare: True
+.RS
+# Recording the output of a command into a "psspecial.<phase>" file containing the output.
 
-\ [debconf.conf]
- Type: file
- File: /etc/debconf.conf
- Failok: True
+.RE
+  [debconf.conf]
+  Type: file
+  File: /etc/debconf.conf
+  Failok: True
+.RS
+# Recording an additional file, stored as "debconf.<phase>"
 
-\ [ssh]
- Type: directory
- Directory: /etc/ssh/
+.RE
+  [ssh]
+  Type: directory
+  Directory: /etc/ssh/
+.RS
+# Recursively Recording all files from /etc/ssh/ directory, with sub-files appended with ".<phase>".
 
-These would record two files per run, psspecial.phase and debconf.conf.phase,
-along with the content of the /etc/ssh/ directory with sub-files appended with
-.phase.
+.RE
+  [fail2ban]
+  Type: directory
+  Directory: /etc/fail2ban
+  File_Pattern: .*\\.local$
+.RS
+# Recording all files from /etc/fail2ban/ directory matching '.*\\.local$', with sub-files appended with ".<phase>"
+

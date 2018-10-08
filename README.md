@@ -74,10 +74,25 @@ example:
 [psspecial]
 Type: command
 Command: /bin/ps -aux
+Compare: True
+     # Recording the output of a command into a "psspecial.<phase>" file containing the output.
 
 [debconf.conf]
 Type: file
 File: /etc/debconf.conf
+Failok: True
+     # Recording an additional file, stored as "debconf.<phase>"
+
+[ssh]
+Type: directory
+Directory: /etc/ssh/
+     # Recursively Recording all files from /etc/ssh/ directory, with sub-files appended with ".<phase>".
+
+[fail2ban]
+Type: directory
+Directory: /etc/fail2ban
+File_Pattern: .*\.local$
+     #  Recording  all  files  from  /etc/fail2ban/  directory  matching  '.*\.local$', with sub-files
+     appended with ".<phase>"
 ```
 
-This will result in files psspecial.phase and debconf.conf.phase.
