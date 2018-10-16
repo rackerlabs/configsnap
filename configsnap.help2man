@@ -16,9 +16,15 @@ All custom file collections in the additional.conf file must begin with a "[sect
 .RS 4
 Can take values \fBCommand\fR, \fBFile\fR, or \fBDirectory\fR depending on the action that needs to be performed.
 
+.RS 4
 If \fBType=Command\fR then the output from the specified command will be save to a file named after the section. The command must be specified using the full path to the executable. e.g. /bin/ss -tanp. \fBCommand\fR supports several additional configuration options.
 
-.RS 4
+If \fBType=File\fR then the specified file will be save to the backup directory with suffix matching the stage. The full path to the file must be used. \fBType=File\fR supports the same \fBFailOk\fR and \fBCompare\fR options as \fBCommand\fR.
+
+If \fBType=Directory\fR then the contents of the directory will be a subfolder of the same name within the backup directory. The path to the directory should include a trailing '/'. \fBDirectory\fR supports the \fBFailOk\fR, \fBCompare\fR (see \fBType=Command\fR), and the following.
+.RE
+.RE
+.PP
 \fISort=\fR
 .RS 4
 Whether to sort the output of the command, (default: False)
@@ -33,17 +39,10 @@ Report errors when configsnap runs this section, (default: False)
 .RS 4
 Produce a diff between the pre/post files when running configsnap, (default: False)
 .RE
-.RE
-
-If \fBType=File\fR then the specified file will be save to the backup directory with suffix matching the stage. The full path to the file must be used. \fBType=File\fR supports the same \fBFailOk\fR and \fBCompare\fR options as \fBCommand\fR.
- 
-If \fBType=Directory\fR then the contents of the directory will be a subfolder of the same name within the backup directory. The path to the directory should include a trailing '/'. \fBDirectory\fR supports the \fBFailOk\fR, \fBCompare\fR (see \fBType=Command\fR), and the following.
-
-.RS 4
+.PP
 \fIFile_Pattern=\fR
 .RS 4
 Rather than saving every file in a directory, backup only ones matching the Python regex pattern, (default: .*). See \fBExamples\fR below.
-.RE
 .RE
 .RE
 
