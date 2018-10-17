@@ -1,45 +1,72 @@
 [Files]
+\fI/etc/configsnap/additional.conf\fR
+.RS 4
+Optional configuration file to define additional command output and files to collect.
+.RE
 
-\//etc/configsnap/additional.conf
-  Optional configuration file to define additional command output and files to collect.
-
-[Custom Collection]
-
+.PP
 Commands are all run as root, so the custom collection configuration file must
 be owned by root and not read or writable by other users. The file format is:
 
-\ [section] - The name of the output file, and the status message for this collection
- Type - "command", to run a command, "file" to save a file, or "directory" to
- recursively backup a directory.
- Command - When Type = command, the fully qualified command to run, e.g. /bin/ss -tanp
- File - The fully qualified path to a file to save, e.g. /etc/debconf.conf
- Directory - The path to the directory with trailing '/'
+.PP
+All custom file collections in the additional.conf file must begin with a "[section]" which contains the following options.
 
-For "command", there is the following additional optional setting:
- Sort - save output sorted (default: False)
+.PP
+\fIType=\fR
+.RS 4
+Can take values \fBCommand\fR, \fBFile\fR, or \fBDirectory\fR depending on the action that needs to be performed.
 
-For either "command" or "file", the are the follow additional optional settings:
- Failok - True/False - Whether to report problems running the command or
- copying the file (default: False)
- Compare - True/False - Whether to compare output when phase contains post or
- rollback (default: False)
+.RS 4
+If \fBType=Command\fR then the output from the specified command will be save to a file named after the section. The command must be specified using the full path to the executable. e.g. /bin/ss -tanp. \fBCommand\fR supports several additional configuration options.
 
-Examples:
+If \fBType=File\fR then the specified file will be save to the backup directory with suffix matching the stage. The full path to the file must be used. \fBType=File\fR supports the same \fBFailOk\fR and \fBCompare\fR options as \fBCommand\fR.
 
-\ [psspecial]
- Type: command
- Command: /bin/ps -aux
- Compare: True
+If \fBType=Directory\fR then the contents of the directory will be a subfolder of the same name within the backup directory. The path to the directory should include a trailing '/'. \fBDirectory\fR supports the \fBFailOk\fR, \fBCompare\fR (see \fBType=Command\fR), and the following.
+.RE
+.RE
+.PP
+\fISort=\fR
+.RS 4
+Whether to sort the output of the command, (default: False)
+.RE
+.PP
+\fIFailOk=\fR
+.RS 4
+Report errors when configsnap runs this section, (default: False)
+.RE
+.PP
+\fICompare=\fR
+.RS 4
+Produce a diff between the pre/post files when running configsnap, (default: False)
+.RE
+.PP
+\fIFile_Pattern=\fR
+.RS 4
+Rather than saving every file in a directory, backup only ones matching the Python regex pattern, (default: .*). See \fBExamples\fR below.
+.RE
+.RE
 
-\ [debconf.conf]
- Type: file
- File: /etc/debconf.conf
- Failok: True
+\fBExamples\fR
 
-\ [ssh]
- Type: directory
- Directory: /etc/ssh/
+    # Recording the output of a command into a "psspecial.<phase>" file containing the output.
+    [psspecial]
+    Type: command
+    Command: /bin/ps -aux
+    Compare: True
 
-These would record two files per run, psspecial.phase and debconf.conf.phase,
-along with the content of the /etc/ssh/ directory with sub-files appended with
-.phase.
+    # Recording an additional file, stored as "debconf.<phase>"
+    [debconf.conf]
+    Type: file
+    File: /etc/debconf.conf
+    Failok: True
+
+    # Recursively Recording all files from /etc/ssh/ directory, with sub-files appended with ".<phase>".
+    [ssh]
+    Type: directory
+    Directory: /etc/ssh/
+
+    # Recording all files from /etc/fail2ban/ directory matching '.*\\.local$', with sub-files appended with ".<phase>"
+    [fail2ban]
+    Type: directory
+    Directory: /etc/fail2ban
+    File_Pattern: .*\\.local$
