@@ -1,5 +1,5 @@
 Name:          configsnap
-Version:       0.14
+Version:       0.16
 Release:       1%{?dist}
 Summary:       Record and compare system state
 License:       ASL 2.0
@@ -42,6 +42,13 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
+* Sat Oct 17 2018 Nick Rhodes <nrhodes91@gmail.com> - 0.16-1
+* - Add --config option for specifying custom a configuration file
+
+* Sat Sep 15 2018 Nick Rhodes <nrhodes91@gmail.com> - 0.15-1
+* - Added copy_dir function to recursively backup and diff directories
+* - Add ability to use copy_dir in additional.conf along with a file pattern match
+
 * Tue Jul 31 2018 Paolo Gigante <paolo.gigante.sa@gmail.com> - 0.14-1
 - Adjusted -w option to only overwrite specific tagged files
 - Add option to compare existing files without gathering new data using the -C/--compare-only option
