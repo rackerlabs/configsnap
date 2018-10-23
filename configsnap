@@ -13,11 +13,10 @@
 # CONDITIONS OF ANY KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations under the License.
 
-from __future__ import print_function
-import argparse
 import ConfigParser
 import os
 import os.path
+import optparse
 import pwd
 import grp
 import sys
@@ -29,7 +28,7 @@ import shutil
 import tarfile
 
 
-version = "0.16"
+version = "0.15"
 diffs_found_msg = False
 is_php_detected = False
 is_apache_detected = False
@@ -71,7 +70,7 @@ def check_option_conflicts(options):
         try:
             requires = [options.phase is not None,
                         options.pre_suffix is not None]
-        except Exception:
+        except:
             report_error("--phase or --pre not set")
             sys.exit(1)
 
@@ -423,56 +422,50 @@ class dataGather:
 ###################################################
 
 desc = ("Record useful system state information, and compare to previous state "
-        "if run with PHASE containing \"post\" or \"rollback\".\nAn optional "
-        "file, (default /etc/configsnap/additional.conf), can be provided for "
-        "extra files directories or commands to register during configsnap "
-        "execution.")
+        "if run with PHASE containing \"post\" or \"rollback\".\nAn optional file, "
+        "/etc/configsnap/additional.conf, can be provided for extra files, "
+        "directories or commands to register during configsnap execution.")
 
-parser = argparse.ArgumentParser(description=desc)
-parser.add_argument('-w', '--overwrite',
-                    action="store_true", dest="overwrite_enabled", default=False,
-                    help='if phase files already exist in tag dir, remove '
-                          'previously collected data with that tag')
-parser.add_argument('-a', '--archive',
-                    action="store_true", dest="archive_enabled", default=False,
-                    help='pack output files into a tar archive')
-parser.add_argument("-v", "--verbose",
-                    action="store_true", dest="verbose_enabled", default=False,
-                    help="print debug info")
-parser.add_argument("-V", "--version",
-                    action="store_true", dest="print_version", default=False,
-                    help="print version")
-parser.add_argument("-s", "--silent",
-                    action="store_true", dest="silent_enabled", default=False,
-                    help="no output to stdout")
-parser.add_argument("--force-compare",
-                    action="store_true", dest="force_compare", default=False,
-                    help="Force a comparison after collecting data")
-parser.add_argument('-t', '--tag',
-                    dest='tag',
-                    help='tag identifer (e.g. a ticket number)')
-parser.add_argument('-d', '--basedir',
-                    dest='basedir', default='/root',
-                    help='base directory to store output')
-parser.add_argument('-p', '--phase',
-                    dest='phase',
-                    help='phase this is being used for. '
-                         'Can be any string. Phases containing  post  or '
-                         'rollback  will perform diffs')
-parser.add_argument('-C', '--compare-only',
-                    action="store_true", dest='compare_only', default=False,
-                    help='Compare existing files with tags specified with --pre and --phase')
-parser.add_argument('--pre',
-                    dest='pre_suffix', default='pre',
-                    help='suffix for files captured at previous state, for comparison')
-parser.add_argument('-c', '--config', default='/etc/configsnap/additional.conf',
-                    help='additional config file to use. Setting this will '
-                         'overwrite default.')
+parser = optparse.OptionParser(description=desc)
+parser.add_option('-w', '--overwrite',
+                  action="store_true", dest="overwrite_enabled", default=False,
+                  help='if phase files already exist in tag dir, remove previously collected data with that tag')
+parser.add_option('-a', '--archive',
+                  action="store_true", dest="archive_enabled", default=False,
+                  help='pack output files into a tar archive')
+parser.add_option("-v", "--verbose",
+                  action="store_true", dest="verbose_enabled", default=False,
+                  help="print debug info")
+parser.add_option("-V", "--version",
+                  action="store_true", dest="print_version", default=False,
+                  help="print version")
+parser.add_option("-s", "--silent",
+                  action="store_true", dest="silent_enabled", default=False,
+                  help="no output to stdout")
+parser.add_option("--force-compare",
+                  action="store_true", dest="force_compare", default=False,
+                  help="Force a comparison after collecting data")
+parser.add_option('-t', '--tag',
+                  dest='tag',
+                  help='tag identifer (e.g. a ticket number)')
+parser.add_option('-d', '--basedir',
+                  dest='basedir', default='/root',
+                  help='base directory to store output')
+parser.add_option('-p', '--phase',
+                  dest='phase',
+                  help='phase this is being used for. '
+                       'Can be any string. Phases containing  post  or  rollback  will perform diffs')
+parser.add_option('-C', '--compare-only',
+                  action="store_true", dest='compare_only', default=False,
+                  help='Compare existing files with tags specified with --pre and --phase')
+parser.add_option('--pre',
+                  dest='pre_suffix', default='pre',
+                  help='suffix for files captured at previous state, for comparison')
 
-options = parser.parse_args()
+(options, args) = parser.parse_args()
 
 if options.print_version:
-    print("configsnap %s" % version)
+    print "configsnap %s" % version
     sys.exit(0)
 
 if os.geteuid() != 0:
@@ -484,20 +477,6 @@ if not options.tag:
     sys.exit(1)
 
 check_option_conflicts(options)
-
-# Load custom collection list
-Config = ConfigParser.ConfigParser()
-# Grab the full path before we chdir
-customcollectionfile = os.path.abspath(options.config)
-
-# If anything else than default was specified as custom config file
-# and is not present, raise an error and exit.
-if os.path.exists(customcollectionfile):
-    Config.read(customcollectionfile)
-elif customcollectionfile != parser.get_default('config'):
-    report_error("Additional config file %s not found! Quitting."
-                 % customcollectionfile)
-    sys.exit(1)
 
 tagdir = os.path.join(options.basedir, options.tag)
 workdir = create_dir(tagdir, options.overwrite_enabled)
@@ -513,17 +492,20 @@ if options.phase:
     for root, dirs, files in os.walk(workdir):
         for filename in files:
             if filename.endswith(".%s" % phase) and not options.compare_only:
-                report_error("Files for %s already exist in %s"
-                             % (phase, os.getcwd()))
+                report_error("Files for %s already exist in %s" % (phase,
+                                                                   os.getcwd()))
                 sys.exit(1)
 else:
     now = datetime.datetime.now()
     phase = "%d%02d%02d%02d%02d" % (now.year, now.month, now.day,
                                     now.hour, now.minute)
 
+# Load custom collection list
+customcollectionfile = '/etc/configsnap/additional.conf'
+Config = ConfigParser.ConfigParser()
+
 if options.compare_only:
-    report_info("Comparing files from phases: %s and %s"
-                % (options.pre_suffix, options.phase))
+    report_info("Comparing files from phases: %s and %s" % (options.pre_suffix, options.phase))
     compare_files()
     sys.exit(0)
 
@@ -533,8 +515,8 @@ if os.path.exists(customcollectionfile):
     if st.st_uid != 0:
         report_error("Custom collection file %s not owned by root, ignoring" %
                      customcollectionfile)
-    elif int(oct(st.st_mode)[-2:]) > 44:
-        report_error("Custom collection file %s is writable by non-root users, ignoring" %
+    elif oct(st.st_mode)[-2:] != '00':
+        report_error("Custom collection file %s is read or writable by non-root, ignoring" %
                      customcollectionfile)
     else:
         # Only read in the config file if the above checks have passed
@@ -544,8 +526,8 @@ if os.path.exists(customcollectionfile):
 for section in Config.sections():
     if Config.has_option(section, 'type'):
         if not re.match('^(file|directory|command)$', Config.get(section, 'type').lower()):
-            report_error("Wrong \"Type\" defined for custom collection entry \"%s\"; "
-                         "should be \"file\", \"directory\" or \"command\"" % section)
+            report_error(
+                "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\", \"directory\" or \"command\"" % section)
 
 # Get a list of processes running on the server
 procs = subprocess.Popen(
