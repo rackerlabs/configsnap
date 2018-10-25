@@ -28,7 +28,7 @@ import shutil
 import tarfile
 
 
-version = "0.15"
+version = "0.16"
 diffs_found_msg = False
 is_php_detected = False
 is_apache_detected = False
@@ -70,7 +70,7 @@ def check_option_conflicts(options):
         try:
             requires = [options.phase is not None,
                         options.pre_suffix is not None]
-        except:
+        except Exception:
             report_error("--phase or --pre not set")
             sys.exit(1)
 
@@ -461,6 +461,9 @@ parser.add_option('-C', '--compare-only',
 parser.add_option('--pre',
                   dest='pre_suffix', default='pre',
                   help='suffix for files captured at previous state, for comparison')
+parser.add_option('-c', '--config', default='/etc/configsnap/additional.conf',
+                  help='additional config file to use. Setting this will '
+                       'overwrite default.')
 
 (options, args) = parser.parse_args()
 
@@ -478,6 +481,38 @@ if not options.tag:
 
 check_option_conflicts(options)
 
+# Load custom collection list
+Config = ConfigParser.ConfigParser()
+# Grab the full path before we chdir
+customcollectionfile = os.path.abspath(options.config)
+
+
+if os.path.exists(customcollectionfile):
+    # Check file is owned by root and not read/writable by anyone else
+    st = os.stat(customcollectionfile)
+    if st.st_uid != 0:
+        report_error("Custom collection file %s not owned by root, ignoring" %
+                     customcollectionfile)
+        sys.exit(1)
+    elif int(oct(st.st_mode)[-2:]) > 44:
+        report_error("Custom collection file %s is writable by non-root users, ignoring" %
+                     customcollectionfile)
+        sys.exit(1)
+    else:
+        # Only read in the config file if the above checks have passed
+        Config.read(customcollectionfile)
+
+        # Does the default extra config file exist? Warn if yes
+        if os.path.exists('/etc/configsnap/additional.conf'):
+            report_info_blue("Default config file /etc/configsnap/"
+                             "additional.conf will be ignored, using %s"
+                             % customcollectionfile)
+
+elif customcollectionfile != '/etc/configsnap/additional.conf':
+    report_error("Additional config file %s not found! Quitting."
+                 % customcollectionfile)
+    sys.exit(1)
+
 tagdir = os.path.join(options.basedir, options.tag)
 workdir = create_dir(tagdir, options.overwrite_enabled)
 os.chdir(workdir)
@@ -492,42 +527,26 @@ if options.phase:
     for root, dirs, files in os.walk(workdir):
         for filename in files:
             if filename.endswith(".%s" % phase) and not options.compare_only:
-                report_error("Files for %s already exist in %s" % (phase,
-                                                                   os.getcwd()))
+                report_error("Files for %s already exist in %s"
+                             % (phase, os.getcwd()))
                 sys.exit(1)
 else:
     now = datetime.datetime.now()
     phase = "%d%02d%02d%02d%02d" % (now.year, now.month, now.day,
                                     now.hour, now.minute)
 
-# Load custom collection list
-customcollectionfile = '/etc/configsnap/additional.conf'
-Config = ConfigParser.ConfigParser()
-
 if options.compare_only:
-    report_info("Comparing files from phases: %s and %s" % (options.pre_suffix, options.phase))
+    report_info("Comparing files from phases: %s and %s"
+                % (options.pre_suffix, options.phase))
     compare_files()
     sys.exit(0)
-
-if os.path.exists(customcollectionfile):
-    # Check file is owned by root and not read/writable by anyone else
-    st = os.stat(customcollectionfile)
-    if st.st_uid != 0:
-        report_error("Custom collection file %s not owned by root, ignoring" %
-                     customcollectionfile)
-    elif oct(st.st_mode)[-2:] != '00':
-        report_error("Custom collection file %s is read or writable by non-root, ignoring" %
-                     customcollectionfile)
-    else:
-        # Only read in the config file if the above checks have passed
-        Config.read(customcollectionfile)
 
 # Ensure each section has a valid Type
 for section in Config.sections():
     if Config.has_option(section, 'type'):
         if not re.match('^(file|directory|command)$', Config.get(section, 'type').lower()):
-            report_error(
-                "Wrong \"Type\" defined for custom collection entry \"%s\"; should be \"file\", \"directory\" or \"command\"" % section)
+            report_error("Wrong \"Type\" defined for custom collection entry \"%s\"; "
+                         "should be \"file\", \"directory\" or \"command\"" % section)
 
 # Get a list of processes running on the server
 procs = subprocess.Popen(
