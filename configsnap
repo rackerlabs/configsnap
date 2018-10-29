@@ -367,9 +367,7 @@ class dataGather:
                                        self.phase)
 
             try:
-                pre_fd = open(pre_filename)
                 post_fd = open(post_filename)
-                pre_fd.close()
                 post_fd.close()
             except IOError, e:
                 report_error("- File removed: %s" % (e.filename))
