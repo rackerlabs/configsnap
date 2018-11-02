@@ -605,7 +605,7 @@ if os.path.exists('/usr/bin/systemctl'):
 
 report_info(
     "Getting network details, firewall rules and listening services...")
-run.run_command(['ip', 'address', 'show'],
+run.run_command(['bash', '-c', 'ip a s | sed "/^\s\+valid_lft.*/d"'],
                 'ip_addresses', fail_ok=False, sort=False)
 run.run_command(['ip', 'route', 'show'],
                 'ip_routes', fail_ok=False, sort=False)
