@@ -503,7 +503,8 @@ if os.path.exists(customcollectionfile):
         Config.read(customcollectionfile)
 
         # Does the default extra config file exist? Warn if yes
-        if os.path.exists('/etc/configsnap/additional.conf'):
+        if (os.path.exists('/etc/configsnap/additional.conf')
+                and customcollectionfile != '/etc/configsnap/additional.conf'):
             report_info_blue("Default config file /etc/configsnap/"
                              "additional.conf will be ignored, using %s"
                              % customcollectionfile)
