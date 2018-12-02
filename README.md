@@ -11,7 +11,7 @@ file locations match RHEL or Ubuntu.
 Usage: configsnap [options]
 
 Record useful system state information, and compare to previous state if run
-with PHASE containing "post" or "rollback". An optional file,
+with PHASE containing "post" or "rollback". A default config file,
 /etc/configsnap/additional.conf, can be provided for extra files, directories
 or commands to register during configsnap execution.
 
