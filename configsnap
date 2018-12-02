@@ -28,7 +28,7 @@ import shutil
 import tarfile
 
 
-version = "0.16"
+version = "0.16.2"
 diffs_found_msg = False
 is_php_detected = False
 is_apache_detected = False
