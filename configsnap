@@ -17,14 +17,11 @@ import ConfigParser
 import os
 import os.path
 import optparse
-import pwd
-import grp
 import sys
 import subprocess
 import datetime
 import glob
 import re
-import shutil
 import tarfile
 
 
@@ -67,16 +64,14 @@ def check_option_conflicts(options):
                      options.archive_enabled is True,
                      options.overwrite_enabled is True]
 
-        try:
-            requires = [options.phase is not None,
-                        options.pre_suffix is not None]
-        except Exception:
+        if (options.phase is None or options.pre_suffix is None):
             report_error("--phase or --pre not set")
             sys.exit(1)
 
         if any(conflicts):
             options.silent_enabled = False
-            report_error("Conflicting options provided: '-a', '-s' and '-w' conflict with '-C'")
+            report_error("Conflicting options provided: '-a', '-s' and '-w' "
+                         "conflict with '-C'")
             sys.exit(1)
 
 
@@ -87,8 +82,8 @@ def create_dir(tagdir, overwrite):
             # We need to go through all subdirs as well
             for root, dirs, files in os.walk(workdir):
                 if any(s.endswith(".%s" % options.phase) for s in files):
-                    report_info(
-                        "%s files exist in %s. Overwrite (-w/--overwrite) enabled so removing." % (options.phase, root))
+                    report_info("%s files exist in %s. Overwrite "
+                                "(-w/--overwrite) enabled so removing." % (options.phase, root))
 
                 # actual removal
                 for filename in files:
@@ -142,7 +137,8 @@ def compare_files():
         if filename.endswith(options.pre_suffix):
             found_pre = True
     if not found_pre:
-        report_error("Unable to diff, as no " + options.pre_suffix + " pre files")
+        report_error("Unable to diff, as no " +
+                     options.pre_suffix + " pre files")
         sys.exit(0)
 
     report_info("\nThis is %s phase so performing file diffs..." % phase)
@@ -176,7 +172,6 @@ def compare_files():
     additional_to_compare = []
     for section in Config.sections():
         try:
-            cfgtype = Config.get(section, 'type').lower()
             if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
                 additional_to_compare.append(section)
         except ConfigParser.NoOptionError, e:
@@ -217,14 +212,14 @@ def compare_files():
 
     if diffs_found_msg:
         report_info_blue("\nINTERPRETING DIFFS:\n")
-        report_info_blue(
-            "* Lines beginning with a - show an entry from the " + options.pre_suffix + " pre file which has changed\n"
-            "or which is not present in the .post or .rollback file.\n")
-        report_info_blue(
-            "* Lines beginning with a + show an entry from the .post or.rollback file which\n"
-            "has changed or which is not present in the " + options.pre_suffix + " pre file.\n")
-        report_info_blue(
-            "Please review all diff output above carefully and account for any differences\nfound.\n")
+        report_info_blue("* Lines beginning with a - show an "
+                         "entry from the " + options.pre_suffix + " pre file "
+                         "which has changed\n" "or which is not present in the .post or .rollback file.\n")
+        report_info_blue("* Lines beginning with a + show an entry from the "
+                         ".post or.rollback file which\nhas changed or which "
+                         "is not present in the " + options.pre_suffix + " pre file.\n")
+        report_info_blue("Please review all diff output above carefully and "
+                         "account for any differences\nfound.\n")
 
 
 class dataGather:
@@ -271,7 +266,8 @@ class dataGather:
     def copy_dir(self, srcdir, file_pattern='.*', destdir=None, fail_ok=False, sort=False):
         # Did we override the destination
         if destdir is None:
-            destdir = os.path.join(self.workdir, os.path.basename(os.path.dirname(srcdir)))
+            destdir = os.path.join(
+                self.workdir, os.path.basename(os.path.dirname(srcdir)))
 
         if not os.path.exists(srcdir):
             if not fail_ok:
@@ -282,7 +278,8 @@ class dataGather:
             for cfile in files:
                 if re.match(file_pattern, cfile) and not os.path.islink(os.path.join(root, cfile)):
                     self.copy_file(os.path.join(root, cfile),
-                                   destdir=os.path.join(destdir, root.replace(srcdir, '')),
+                                   destdir=os.path.join(
+                                       destdir, root.replace(srcdir, '')),
                                    fail_ok=False,
                                    sort=False)
 
@@ -335,30 +332,23 @@ class dataGather:
         filename = os.path.join(self.workdir, filename)
         pre_filename = "%s.%s" % (filename, options.pre_suffix)
         post_filename = "%s.%s" % (filename, self.phase)
-        try:
-            pre_fd = open(pre_filename)
-            post_fd = open(post_filename)
-        except IOError, e:
-            report_error("Unable to open file %s: %s" %
-                         (e.filename, e.strerror))
-            return False
 
         try:
             diff_proc = subprocess.Popen(['diff', '--unified=0', '--ignore-blank-lines', '--ignore-space-change', pre_filename, post_filename],
                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
         except OSError, e:
-            report_error("Error running %s: %s" %
-                         (command[0], e.strerror))
+            report_error("Error running diff: %s" %
+                         (e.strerror))
             return None
 
         if diff_proc.wait() != 0:
-            found_diff = True
             diffs_found_msg = True
             report_error(
                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
             sys.stdout.writelines(diff_proc.stdout.readlines())
         else:
-            report_info("No differences against %s.%s" % (filename, options.pre_suffix))
+            report_info("No differences against %s.%s" %
+                        (filename, options.pre_suffix))
 
     def get_diff_dir(self, sdir):
         diffs_found_msg = False
@@ -375,8 +365,8 @@ class dataGather:
                                        self.phase)
 
             try:
-                pre_fd = open(pre_filename)
                 post_fd = open(post_filename)
+                post_fd.close()
             except IOError, e:
                 report_error("- File removed: %s" % (e.filename))
                 continue
@@ -390,8 +380,8 @@ class dataGather:
                                              stderr=subprocess.PIPE,
                                              shell=False)
             except OSError, e:
-                report_error("Error running %s: %s" %
-                             (command[0], e.strerror))
+                report_error("Error running diff: %s" %
+                             (e.strerror))
                 return None
 
             if diff_proc.wait() != 0:
@@ -537,8 +527,8 @@ else:
                                     now.hour, now.minute)
 
 if options.compare_only:
-    report_info("Comparing files from phases: %s and %s"
-                % (options.pre_suffix, options.phase))
+    report_info("Comparing files from phases: %s and %s" %
+                (options.pre_suffix, options.phase))
     compare_files()
     sys.exit(0)
 
@@ -811,7 +801,8 @@ for section in Config.sections():
 
             if not cpdir.endswith("/"):
                 cpdir = cpdir + '/'
-            run.copy_dir(cpdir, file_pattern=config_file_pattern, fail_ok=failokcfg, sort=False)
+            run.copy_dir(cpdir, file_pattern=config_file_pattern,
+                         fail_ok=failokcfg, sort=False)
 
     except ConfigParser.NoOptionError, e:
         report_error(
