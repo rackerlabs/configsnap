@@ -37,7 +37,7 @@ Options:
                         comparison
   -c CONFIG, --config=CONFIG
                         additional config file to use. Setting this will
-                        overwrite default.
+                        override default.
 ```
 
 Example output:
