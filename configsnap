@@ -25,7 +25,7 @@ import re
 import tarfile
 
 
-version = "0.16"
+version = "0.16.2"
 diffs_found_msg = False
 is_php_detected = False
 is_apache_detected = False
@@ -493,7 +493,8 @@ if os.path.exists(customcollectionfile):
         Config.read(customcollectionfile)
 
         # Does the default extra config file exist? Warn if yes
-        if os.path.exists('/etc/configsnap/additional.conf'):
+        if (os.path.exists('/etc/configsnap/additional.conf') and
+                customcollectionfile != '/etc/configsnap/additional.conf'):
             report_info_blue("Default config file /etc/configsnap/"
                              "additional.conf will be ignored, using %s"
                              % customcollectionfile)
