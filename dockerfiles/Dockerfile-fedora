@@ -1,0 +1,11 @@
+FROM fedora:latest
+RUN dnf install -y git rpm-build rpm-devel rpmlint make python2 rpmdevtools \
+    help2man python2-devel \
+    && groupadd -g 1004 builduser \
+    && useradd -m -u 1003 -g builduser builduser
+
+USER builduser
+RUN mkdir /home/builduser/configsnap \
+    && rpmdev-setuptree
+WORKDIR /home/builduser/configsnap
+CMD ["make","fedora"]

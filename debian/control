@@ -1,11 +1,14 @@
 Source: configsnap
-Maintainer: Piers Cornwell <piers.cornwell@rackspace.co.uk>
-Homepage: https://github.com/rackerlabs/configsnap
 Section: admin
+Maintainer: Nick Rhodes <nrhodes91@gmail.com>
 Priority: optional
 Standards-Version: 3.9.6
 Build-Depends: debhelper (>= 9)
+Homepage: https://github.com/rackerlabs/configsnap
 
 Package: configsnap
+Depends:
+    python, python2.7, diffutils
 Architecture: all
-Description: configsnap records important system state information and can optionally compare with a previous state and identify changes
+Description: configsnap records important system state information and can
+    optionally compare with a previous state and identify changes
