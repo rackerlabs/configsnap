@@ -341,11 +341,13 @@ class dataGather:
                          (e.strerror))
             return None
 
-        if diff_proc.wait() != 0:
+        diff_stdout = diff_proc.communicate(input=None)
+
+        if diff_proc.returncode != 0:
             diffs_found_msg = True
             report_error(
                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
-            sys.stdout.writelines(diff_proc.stdout.readlines())
+            sys.stdout.writelines(diff_stdout)
         else:
             report_info("No differences against %s.%s" %
                         (filename, options.pre_suffix))
