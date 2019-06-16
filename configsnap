@@ -285,30 +285,30 @@ class dataGather:
 
     def run_command(self, command, filename, fail_ok=False, sort=False, stdout=False, shell=False):
         try:
-            command_proc = subprocess.Popen(
+            cmd_proc = subprocess.Popen(
                 command, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, shell=shell)
+
         except OSError, e:
             if not fail_ok:
                 report_error("Error running %s: %s" %
                              (command[0], e.strerror))
-                return None
-            else:
-                return None
+            return False
 
-        output = command_proc.stdout.readlines()
-        returncode = command_proc.wait()
+        # Can't change this to Popen.communicate() as it needs to be a list for the sort below
+        cmd_stdout = cmd_proc.stdout.readlines()
 
+        returncode = cmd_proc.wait()
         if not fail_ok and returncode != 0:
             report_error("%s failed\nPlease troubleshoot manually" %
                          (' '.join(command), ))
-            return None
+            return False
 
-        if len(output) == 0:
+        if len(cmd_stdout) == 0:
             return True
 
         if sort:
-            output.sort()
+            cmd_stdout.sort()
 
         filename = os.path.join(self.workdir, "%s.%s" % (filename, self.phase))
 
@@ -316,16 +316,16 @@ class dataGather:
             report_error("%s already exists" % filename)
 
         try:
-            output_fd = open(filename, 'w')
+            with open(filename, 'w') as output_fd:
+                output_fd.writelines(cmd_stdout)
+                report_verbose("Recording %s to %s" % (command, filename))
+
+                if stdout:
+                    sys.stdout.writelines(cmd_stdout)
+
         except IOError, e:
             report_error("Unable to open %s: %s" % (filename, e.strerror))
             return False
-
-        output_fd.writelines(output)
-        output_fd.close()
-        report_verbose("Recording %s to %s" % (command, filename))
-        if stdout:
-            sys.stdout.writelines(output)
 
     def get_diff_files(self, filename):
         global diffs_found_msg
@@ -334,12 +334,18 @@ class dataGather:
         post_filename = "%s.%s" % (filename, self.phase)
 
         try:
-            diff_proc = subprocess.Popen(['diff', '--unified=0', '--ignore-blank-lines', '--ignore-space-change', pre_filename, post_filename],
-                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+            diff_proc = subprocess.Popen(['diff', '--unified=0',
+                                          '--ignore-blank-lines',
+                                          '--ignore-space-change',
+                                          pre_filename,
+                                          post_filename],
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE,
+                                         shell=False)
         except OSError, e:
             report_error("Error running diff: %s" %
                          (e.strerror))
-            return None
+            return False
 
         diff_stdout, diff_stderr = diff_proc.communicate(input=None)
 
