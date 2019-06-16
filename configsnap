@@ -295,7 +295,8 @@ class dataGather:
                              (command[0], e.strerror))
             return False
 
-        cmd_stdout, cmd_stderr = cmd_proc.communicate(input=False)
+        # Can't change this to Popen.communicate() as it needs to be a list for the sort below
+        cmd_stdout = cmd_proc.stdout.readlines()
 
         returncode = cmd_proc.wait()
         if not fail_ok and returncode != 0:
@@ -326,7 +327,6 @@ class dataGather:
             report_error("Unable to open %s: %s" % (filename, e.strerror))
             return False
 
-
     def get_diff_files(self, filename):
         global diffs_found_msg
         filename = os.path.join(self.workdir, filename)
@@ -334,8 +334,14 @@ class dataGather:
         post_filename = "%s.%s" % (filename, self.phase)
 
         try:
-            diff_proc = subprocess.Popen(['diff', '--unified=0', '--ignore-blank-lines', '--ignore-space-change', pre_filename, post_filename],
-                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+            diff_proc = subprocess.Popen(['diff', '--unified=0',
+                                          '--ignore-blank-lines',
+                                          '--ignore-space-change',
+                                          pre_filename,
+                                          post_filename],
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE,
+                                         shell=False)
         except OSError, e:
             report_error("Error running diff: %s" %
                          (e.strerror))
