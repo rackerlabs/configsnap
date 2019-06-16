@@ -45,6 +45,9 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 * Sun Jun 16 2019 Nick Rhodes <nrhodes91@gmail.com> - 0.17.0-1
 - Update diff function to use Popen.communicate() (PR 101)
 
+* Thu Jan 31 2019 Fedora Release Engineering <releng@fedoraproject.org> - 0.16.2-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
+
 * Sun Dec 02 2018 Nick Rhodes <nrhodes91@gmail.com> - 0.16.2-1
 - Only report skipping default additional.conf file when using custom file
 
@@ -53,7 +56,7 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 - Add --config option for specifying custom a configuration file using optparse
 - Filter the "ip address show" output to remove lines containing valid_lft XXsec preferred_lft XXsec
 
-* Sat Oct 17 2018 Nick Rhodes <nrhodes91@gmail.com> - 0.16-1
+* Wed Oct 17 2018 Nick Rhodes <nrhodes91@gmail.com> - 0.16-1
 - Add --config option for specifying custom a configuration file
 
 * Sat Sep 15 2018 Nick Rhodes <nrhodes91@gmail.com> - 0.15-1
