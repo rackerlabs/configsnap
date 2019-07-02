@@ -512,7 +512,8 @@ elif customcollectionfile != '/etc/configsnap/additional.conf':
                  % customcollectionfile)
     sys.exit(1)
 
-tagdir = os.path.join(options.basedir, options.tag)
+# os.path.abspath to deal with relavive paths
+tagdir = os.path.join(os.path.abspath(options.basedir), options.tag)
 workdir = create_dir(tagdir, options.overwrite_enabled)
 os.chdir(workdir)
 
