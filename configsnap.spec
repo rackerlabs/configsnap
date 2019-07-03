@@ -1,5 +1,5 @@
 Name:          configsnap
-Version:       0.17.0
+Version:       0.17.1
 Release:       1%{?dist}
 Summary:       Record and compare system state
 License:       ASL 2.0
@@ -42,6 +42,9 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
+* Wed Jul 03 2019 Nick Rhodes <nrhodes91@gmail.com> - 0.17.1-1
+- Convert relative basedir to absolute path (PR 103)
+
 * Sun Jun 16 2019 Nick Rhodes <nrhodes91@gmail.com> - 0.17.0-1
 - Update diff function to use Popen.communicate() (PR 101)
 
