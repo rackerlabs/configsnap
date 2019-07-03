@@ -25,7 +25,7 @@ import re
 import tarfile
 
 
-version = "0.17.0"
+version = "0.17.1"
 diffs_found_msg = False
 is_php_detected = False
 is_apache_detected = False
