@@ -1,9 +1,9 @@
 language: python
 sudo: required
 python:
-  - "2.7"
+  - 2.7
 install:
-  - pip install pep8
+  - pip install flake8
 script:
-  - "pep8 --ignore=E501 configsnap"
-  - "sudo ./test_configsnap.py"
+  - flake8 configsnap --count --max-line-length=127 --show-source --statistics
+  - sudo ./test_configsnap.py
