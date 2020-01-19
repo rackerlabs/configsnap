@@ -158,13 +158,15 @@ def compare_files():
                      'dnf.conf', 'pcs_constraints', 'sudoers']
 
     # Add php files if detected
-    if is_php_detected:
+    if os.path.exists('/usr/bin/php'):
         compare_files.append('php.ini')
+        compare_files.append('php_modules')
+        compare_files.append('php_info')
         if os.path.exists('/usr/bin/pecl'):
             compare_files.append('pecl-list')
 
     # Add apache files if detected
-    if is_apache_detected:
+    if run.is_running('/usr/sbin/httpd', '/usr/sbin/httpd.worker'):
         compare_files.append('httpd_modules')
         compare_files.append('httpd_vhosts')
 
@@ -408,9 +410,30 @@ class dataGather:
         if diffs_found_msg is False:
             report_info("No differences found for files in %s" % sdir)
 
+    def is_running(self, *paths):
+        if len(self.procs_out) == 0:
+            # Get a list of processes running on the server
+            procs = subprocess.Popen(
+                ['ps', '-A', '--noheaders', '-o', 'args'], stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+
+            procs_out, procs_err = procs.communicate()
+            if procs.returncode == 0:
+                self.procs_out = [x.split()[0] for x in procs_out.splitlines()]
+            else:
+                report_error('Failed to get process list')
+
+        for path in paths:
+            if path in self.procs_out:
+                return True
+
+        return False
+
+
     def __init__(self, workdir, phase):
         self.workdir = workdir
         self.phase = phase
+        self.procs_out = []
 
 
 ###################################################
@@ -547,19 +570,6 @@ for section in Config.sections():
         if not re.match('^(file|directory|command)$', Config.get(section, 'type').lower()):
             report_error("Wrong \"Type\" defined for custom collection entry \"%s\"; "
                          "should be \"file\", \"directory\" or \"command\"" % section)
-
-# Get a list of processes running on the server
-procs = subprocess.Popen(
-    ['ps', '-A', '--noheaders', '-o', 'args'], stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE)
-
-procs_output = procs.communicate()[0]
-if procs.returncode != 0:
-    report_error('Failed to get process list')
-
-# Just keep the process name, drop the arguments
-procs_output = procs_output.splitlines()
-procs_output = [x.split()[0] for x in procs_output]
 
 run = dataGather(workdir, phase)
 report_info("Getting storage details (LVM, partitions, multipathing)...")
@@ -717,15 +727,14 @@ if os.path.exists(hpasmpath):
                     break
             break
 
-if '/usr/sbin/httpd' in procs_output or '/usr/sbin/httpd.worker' in procs_output:
+if run.is_running('/usr/sbin/httpd', '/usr/sbin/httpd.worker'):
     report_info("Getting Apache vhosts and modules...")
-    is_apache_detected = True
     run.run_command(
         ['httpd', '-S'], 'httpd_vhosts', fail_ok=False, sort=False)
     run.run_command(
         ['httpd', '-M'], 'httpd_modules', fail_ok=False, sort=True)
 
-if '/usr/libexec/mysqld' in procs_output:
+if run.is_running('/usr/libexec/mysqld'):
     report_info("Getting MySQL databases...")
     run.run_command(['mysql', '-Bse', 'show databases;'],
                     'mysql_databases', fail_ok=True, sort=True)
@@ -824,7 +833,6 @@ report_info("\n")
 
 # php specifics
 if os.path.exists('/usr/bin/php'):
-    is_php_detected = True
     report_info("Copying PHP related files...")
     run.copy_file('/etc/php.ini', fail_ok=True)
     if os.path.exists('/etc/php.d'):
