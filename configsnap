@@ -429,7 +429,6 @@ class dataGather:
 
         return False
 
-
     def __init__(self, workdir, phase):
         self.workdir = workdir
         self.phase = phase
