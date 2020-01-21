@@ -24,10 +24,8 @@ import glob
 import re
 import tarfile
 
-
 version = "0.18.1"
-is_php_detected = False
-is_apache_detected = False
+diffs_found = False
 
 
 def report_verbose(message):
@@ -127,8 +125,6 @@ def create_archive(tagdir, workdir, tag, overwrite):
 
 
 def compare_files(options):
-    global diffs_found
-    diffs_found = False
     ## Check that there are pre files, and exit if there aren't
     #found_pre = False
     run = dataGather(workdir, phase)
@@ -138,7 +134,7 @@ def compare_files(options):
 
     # Proceed if at least one file with options.pre_suffix is present
     if any(filename.endswith(".%s" % options.pre_suffix) for filename in all_files):
-        report_info("\nThis is %s phase so performing file diffs..." % phase)
+        report_info("Perfoming file diffs...\n")
 
         if 'rollback' in phase:
             run.get_diff_files('packages', options)
@@ -152,22 +148,6 @@ def compare_files(options):
 
         compare_files = list(set(filtered_files))
         compare_files.sort()
-
-## TODO: TEST if still required
-        # Array to hold custom collection files and commands to compare
-        additional_to_compare = []
-        for section in Config.sections():
-            try:
-                if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
-                    additional_to_compare.append(section)
-            except ConfigParser.NoOptionError, e:
-                report_error(
-                    "Check config file options for section %s: %s" % (section, e))
-            except Exception, e:
-                report_error(
-                    "Could not parse config file section %s: %s" % (section, e))
-
-        compare_files.extend(additional_to_compare)
 
         for filename in compare_files:
             pre_filename = os.path.join(workdir,
@@ -205,11 +185,11 @@ def compare_files(options):
                              ".post or.rollback file which\nhas changed or which "
                              "is not present in the " + options.pre_suffix + " pre file.\n")
             report_info_blue("Please review all diff output above carefully and "
-                             "account for any differences\nfound.\n")
+                             "account for any difference found.\n")
 
     else:
-        report_error("Unable to diff, as no " +
-                     options.pre_suffix + " pre files")
+        report_error("Unable to diff, no files with suffix \"" +
+                     options.pre_suffix + "\" present.")
         sys.exit(1)
 
 
@@ -342,6 +322,7 @@ class dataGather:
         diff_stdout, diff_stderr = diff_proc.communicate(input=None)
 
         if diff_proc.returncode != 0:
+            global diffs_found
             diffs_found = True
             report_error(
                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
@@ -387,6 +368,7 @@ class dataGather:
                 return None
 
             if diff_proc.wait() != 0:
+                global diffs_found
                 diffs_found = True
                 report_error("Differences found against %s:\n" % pre_filename)
                 sys.stdout.writelines(diff_proc.stdout.readlines())
@@ -730,8 +712,6 @@ if run.is_running('/usr/libexec/mysqld', '/usr/sbin/mysqld'):
     report_info("Getting MySQL databases...")
     run.run_command(['mysql', '-Bse', 'show databases;'],
                     'mysql_databases', fail_ok=True, sort=True)
-else:
-    report_info("No MySQL databases detected (no /usr/libexec/mysqld)")
 
 # Run any custom commands
 for section in Config.sections():
@@ -788,6 +768,24 @@ if os.path.exists('/etc/network/interfaces.d'):
 if os.path.exists('/etc/sysconfig/network-scripts/'):
     run.copy_dir('/etc/sysconfig/network-scripts/', file_pattern='(ifcfg-|route-).*',
                  fail_ok=False, sort=False)
+# php specifics
+if os.path.exists('/usr/bin/php'):
+    report_info("Copying PHP related files...")
+    run.copy_file('/etc/php.ini', fail_ok=True)
+    if os.path.exists('/etc/php.d'):
+        run.copy_dir('/etc/php.d/', fail_ok=False, sort=False)
+
+    if os.path.exists('/etc/php/'):
+        run.copy_dir('/etc/php/', fail_ok=False, sort=False)
+
+    run.run_command(
+        ['php', '-m'], 'php_modules', fail_ok=False, sort=False)
+    run.run_command(
+        ['php', '-i'], 'php_info', fail_ok=False, sort=False)
+    if os.path.exists('/usr/bin/pecl'):
+        run.run_command(
+            ['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
+
 
 # copy custom files and directories
 for section in Config.sections():
@@ -824,24 +822,6 @@ for section in Config.sections():
             "Could not parse config file section %s: %s" % (section, e))
 
 report_info("\n")
-
-# php specifics
-if os.path.exists('/usr/bin/php'):
-    report_info("Copying PHP related files...")
-    run.copy_file('/etc/php.ini', fail_ok=True)
-    if os.path.exists('/etc/php.d'):
-        run.copy_dir('/etc/php.d/', fail_ok=False, sort=False)
-
-    if os.path.exists('/etc/php/'):
-        run.copy_dir('/etc/php/', fail_ok=False, sort=False)
-
-    run.run_command(
-        ['php', '-m'], 'php_modules', fail_ok=False, sort=False)
-    run.run_command(
-        ['php', '-i'], 'php_info', fail_ok=False, sort=False)
-    if os.path.exists('/usr/bin/pecl'):
-        run.run_command(
-            ['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
 
 if ('post' in phase or 'rollback' in phase or options.force_compare) and not options.silent_enabled:
     compare_files(options)
