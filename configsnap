@@ -25,8 +25,7 @@ import re
 import tarfile
 
 
-version = "0.17.1"
-diffs_found_msg = False
+version = "0.18.1"
 is_php_detected = False
 is_apache_detected = False
 
@@ -49,7 +48,6 @@ def report_info_blue(message):
 def report_error(message):
     if not options.silent_enabled:
         sys.stdout.write("\033[91m%s\n\033[0m" % message)
-
 
 def check_option_conflicts(options):
     # Do not allow silent and verbose options to be used in conjunction
@@ -128,100 +126,92 @@ def create_archive(tagdir, workdir, tag, overwrite):
     return output_filename, True
 
 
-def compare_files():
-    # Check that there are pre files, and exit if there aren't
-    found_pre = False
+def compare_files(options):
+    global diffs_found
+    diffs_found = False
+    ## Check that there are pre files, and exit if there aren't
+    #found_pre = False
     run = dataGather(workdir, phase)
 
-    for filename in os.listdir(workdir):
-        if filename.endswith(options.pre_suffix):
-            found_pre = True
-    if not found_pre:
-        report_error("Unable to diff, as no " +
-                     options.pre_suffix + " pre files")
-        sys.exit(0)
+    # Collects all files and dir at the top level
+    all_files = os.listdir(workdir)
 
-    report_info("\nThis is %s phase so performing file diffs..." % phase)
+    # Proceed if at least one file with options.pre_suffix is present
+    if any(filename.endswith(".%s" % options.pre_suffix) for filename in all_files):
+        report_info("\nThis is %s phase so performing file diffs..." % phase)
 
-    if 'rollback' in phase:
-        run.get_diff_files('packages')
+        if 'rollback' in phase:
+            run.get_diff_files('packages', options)
 
-    compare_files = ['sysvinit', 'mounts', 'netstat', 'ip_addresses',
-                     'network', 'interfaces', 'hosts', 'lvs', 'pvs', 'vgs',
-                     'fstab', 'powermt', 'omreport_version', 'ip_routes',
-                     'partitions', 'lspci', 'omreport_memory',
-                     'omreport_processors', 'omreport_nics', 'omreport_vdisk',
-                     'omreport_pdisk', 'hpreport_server', 'hpreport_memory',
-                     'hpreport_bios', 'hpreport_storage_controller',
-                     'hpreport_storage_vdisk', 'hpreport_storage_pdisk',
-                     'multipath', 'systemdinit', 'upstartinit', 'yum.conf',
-                     'dnf.conf', 'pcs_constraints', 'sudoers']
+        # to search for files with pre_suffix or phase only
+        suffix_exist = re.compile('\.(' + options.pre_suffix + '|' + options.phase + ')$')
+        filtered_files = []
+        for index, value in enumerate(all_files):
+            if suffix_exist.search(value):
+                filtered_files.append(suffix_exist.sub('', value))
 
-    # Add php files if detected
-    if os.path.exists('/usr/bin/php'):
-        compare_files.append('php.ini')
-        compare_files.append('php_modules')
-        compare_files.append('php_info')
-        if os.path.exists('/usr/bin/pecl'):
-            compare_files.append('pecl-list')
+        compare_files = list(set(filtered_files))
+        compare_files.sort()
 
-    # Add apache files if detected
-    if run.is_running('/usr/sbin/httpd', '/usr/sbin/httpd.worker'):
-        compare_files.append('httpd_modules')
-        compare_files.append('httpd_vhosts')
+## TODO: TEST if still required
+        # Array to hold custom collection files and commands to compare
+        additional_to_compare = []
+        for section in Config.sections():
+            try:
+                if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
+                    additional_to_compare.append(section)
+            except ConfigParser.NoOptionError, e:
+                report_error(
+                    "Check config file options for section %s: %s" % (section, e))
+            except Exception, e:
+                report_error(
+                    "Could not parse config file section %s: %s" % (section, e))
 
-    # Array to hold custom collection files and commands to compare
-    additional_to_compare = []
-    for section in Config.sections():
+        compare_files.extend(additional_to_compare)
+
+        for filename in compare_files:
+            pre_filename = os.path.join(workdir,
+                                        "%s.%s" % (filename, options.pre_suffix))
+            if os.path.exists(pre_filename):
+                run.get_diff_files(filename, options)
+
+        # Report subdirectories at the subdir level unless ther verbose option is
+        # given, in which case report as usual
+        report_info("\nStarting sub-dir diffs...")
+        for directory in os.listdir(workdir):
+            if os.path.isdir(os.path.join(workdir, directory)):
+                run.get_diff_dir(directory, options)
+
         try:
-            if Config.has_option(section, 'compare') and Config.get(section, 'compare').lower() == "true":
-                additional_to_compare.append(section)
-        except ConfigParser.NoOptionError, e:
-            report_error(
-                "Check config file options for section %s: %s" % (section, e))
+            uname_pre_fd = open(
+                os.path.join(workdir, 'uname.' + options.pre_suffix), 'r')
+            uname_post_fd = open(
+                os.path.join(workdir, "uname.%s" % phase), 'r')
+            uname_pre = uname_pre_fd.read().strip()
+            uname_post = uname_post_fd.read().strip()
+            if uname_pre != uname_post:
+                sys.stdout.write("Old uname: %s. New uname: %s\n" %
+                                 (uname_pre, uname_post))
         except Exception, e:
             report_error(
-                "Could not parse config file section %s: %s" % (section, e))
+                "Unable to open file %s: %s" % ((e.filename, e.strerror)))
 
-    compare_files.extend(additional_to_compare)
+        if diffs_found:
+            report_info_blue("\nINTERPRETING DIFFS:\n")
+            report_info_blue("* Lines beginning with a - show an "
+                             "entry from the " + options.pre_suffix + " pre file "
+                             "which has changed\n" "or which is not present in the .post or .rollback file.\n")
+            report_info_blue("* Lines beginning with a + show an entry from the "
+                             ".post or.rollback file which\nhas changed or which "
+                             "is not present in the " + options.pre_suffix + " pre file.\n")
+            report_info_blue("Please review all diff output above carefully and "
+                             "account for any differences\nfound.\n")
 
-    for filename in compare_files:
-        pre_filename = os.path.join(workdir,
-                                    "%s.%s" % (filename, options.pre_suffix))
-        if os.path.exists(pre_filename):
-            run.get_diff_files(filename)
+    else:
+        report_error("Unable to diff, as no " +
+                     options.pre_suffix + " pre files")
+        sys.exit(1)
 
-    # Report subdirectories at the subdir level unless ther verbose option is
-    # given, in which case report as usual
-    report_info("\nStarting sub-dir diffs...")
-    for directory in os.listdir(workdir):
-        if os.path.isdir(os.path.join(workdir, directory)):
-            run.get_diff_dir(directory)
-
-    try:
-        uname_pre_fd = open(
-            os.path.join(workdir, 'uname.' + options.pre_suffix), 'r')
-        uname_post_fd = open(
-            os.path.join(workdir, "uname.%s" % phase), 'r')
-        uname_pre = uname_pre_fd.read().strip()
-        uname_post = uname_post_fd.read().strip()
-        if uname_pre != uname_post:
-            sys.stdout.write("Old uname: %s. New uname: %s\n" %
-                             (uname_pre, uname_post))
-    except Exception, e:
-        report_error(
-            "Unable to open file %s: %s" % ((e.filename, e.strerror)))
-
-    if diffs_found_msg:
-        report_info_blue("\nINTERPRETING DIFFS:\n")
-        report_info_blue("* Lines beginning with a - show an "
-                         "entry from the " + options.pre_suffix + " pre file "
-                         "which has changed\n" "or which is not present in the .post or .rollback file.\n")
-        report_info_blue("* Lines beginning with a + show an entry from the "
-                         ".post or.rollback file which\nhas changed or which "
-                         "is not present in the " + options.pre_suffix + " pre file.\n")
-        report_info_blue("Please review all diff output above carefully and "
-                         "account for any differences\nfound.\n")
 
 
 class dataGather:
@@ -329,8 +319,8 @@ class dataGather:
             report_error("Unable to open %s: %s" % (filename, e.strerror))
             return False
 
-    def get_diff_files(self, filename):
-        global diffs_found_msg
+
+    def get_diff_files(self, filename, options):
         filename = os.path.join(self.workdir, filename)
         pre_filename = "%s.%s" % (filename, options.pre_suffix)
         post_filename = "%s.%s" % (filename, self.phase)
@@ -352,16 +342,18 @@ class dataGather:
         diff_stdout, diff_stderr = diff_proc.communicate(input=None)
 
         if diff_proc.returncode != 0:
-            diffs_found_msg = True
+            diffs_found = True
             report_error(
                 "Differences found against %s.%s:\n" % (filename, options.pre_suffix))
-            sys.stdout.writelines(diff_stdout)
+            if diff_stdout != "":
+                sys.stdout.writelines(diff_stdout)
+            else:
+                report_error(diff_stderr)
         else:
             report_info("No differences against %s.%s" %
                         (filename, options.pre_suffix))
 
-    def get_diff_dir(self, sdir):
-        diffs_found_msg = False
+    def get_diff_dir(self, sdir, options):
         all_pre_files = []
         sdir = os.path.join(workdir, sdir)
 
@@ -395,20 +387,21 @@ class dataGather:
                 return None
 
             if diff_proc.wait() != 0:
-                diffs_found_msg = True
+                diffs_found = True
                 report_error("Differences found against %s:\n" % pre_filename)
                 sys.stdout.writelines(diff_proc.stdout.readlines())
             elif options.verbose_enabled is True:
                 report_verbose("No differences against %s" % pre_filename)
 
         # Looking for new files
+        local_diffs = False
         for post_filename in glob.glob(sdir + '/*' + self.phase):
             if post_filename not in all_pre_files:
                 report_error("+ File added: %s:" % post_filename)
-                diffs_found_msg = True
+                local_diffs = True
 
-        if diffs_found_msg is False:
-            report_info("No differences found for files in %s" % sdir)
+        if local_diffs is False:
+            report_info("No extra post files found in %s" % sdir)
 
     def is_running(self, *paths):
         if len(self.procs_out) == 0:
@@ -560,7 +553,7 @@ else:
 if options.compare_only:
     report_info("Comparing files from phases: %s and %s" %
                 (options.pre_suffix, options.phase))
-    compare_files()
+    compare_files(options)
     sys.exit(0)
 
 # Ensure each section has a valid Type
@@ -733,10 +726,12 @@ if run.is_running('/usr/sbin/httpd', '/usr/sbin/httpd.worker'):
     run.run_command(
         ['httpd', '-M'], 'httpd_modules', fail_ok=False, sort=True)
 
-if run.is_running('/usr/libexec/mysqld'):
+if run.is_running('/usr/libexec/mysqld', '/usr/sbin/mysqld'):
     report_info("Getting MySQL databases...")
     run.run_command(['mysql', '-Bse', 'show databases;'],
                     'mysql_databases', fail_ok=True, sort=True)
+else:
+    report_info("No MySQL databases detected (no /usr/libexec/mysqld)")
 
 # Run any custom commands
 for section in Config.sections():
@@ -849,7 +844,7 @@ if os.path.exists('/usr/bin/php'):
             ['pecl', 'list'], 'pecl-list', fail_ok=True, sort=False)
 
 if ('post' in phase or 'rollback' in phase or options.force_compare) and not options.silent_enabled:
-    compare_files()
+    compare_files(options)
 
 
 if options.archive_enabled:
