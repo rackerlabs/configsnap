@@ -47,6 +47,7 @@ def report_error(message):
     if not options.silent_enabled:
         sys.stdout.write("\033[91m%s\n\033[0m" % message)
 
+
 def check_option_conflicts(options):
     # Do not allow silent and verbose options to be used in conjunction
     if options.silent_enabled is True and options.verbose_enabled is True:
@@ -125,8 +126,7 @@ def create_archive(tagdir, workdir, tag, overwrite):
 
 
 def compare_files(options):
-    ## Check that there are pre files, and exit if there aren't
-    #found_pre = False
+    """Compare 2 phases of a same tag"""
     run = dataGather(workdir, phase)
 
     # Collects all files and dir at the top level
@@ -140,7 +140,7 @@ def compare_files(options):
             run.get_diff_files('packages', options)
 
         # to search for files with pre_suffix or phase only
-        suffix_exist = re.compile('\.(' + options.pre_suffix + '|' + options.phase + ')$')
+        suffix_exist = re.compile('[.](' + options.pre_suffix + '|' + options.phase + ')$')
         filtered_files = []
         for index, value in enumerate(all_files):
             if suffix_exist.search(value):
@@ -191,7 +191,6 @@ def compare_files(options):
         report_error("Unable to diff, no files with suffix \"" +
                      options.pre_suffix + "\" present.")
         sys.exit(1)
-
 
 
 class dataGather:
@@ -298,7 +297,6 @@ class dataGather:
         except IOError, e:
             report_error("Unable to open %s: %s" % (filename, e.strerror))
             return False
-
 
     def get_diff_files(self, filename, options):
         filename = os.path.join(self.workdir, filename)
