@@ -24,7 +24,7 @@ import glob
 import re
 import tarfile
 
-version = "0.18.1"
+version = "0.17.1"
 diffs_found = False
 
 
@@ -131,6 +131,8 @@ def compare_files(options):
 
     # Collects all files and dir at the top level
     all_files = os.listdir(workdir)
+    # Those will always result in positive diffs, this is misleading so we exclude them
+    exclusions = '^(sysctl|vgcfgbackup[-].*|ps|meminfo|dmesg|crm_mon|pcs_status)$'
 
     # Proceed if at least one file with options.pre_suffix is present
     if any(filename.endswith(".%s" % options.pre_suffix) for filename in all_files):
@@ -144,16 +146,15 @@ def compare_files(options):
         filtered_files = []
         for index, value in enumerate(all_files):
             if suffix_exist.search(value):
-                filtered_files.append(suffix_exist.sub('', value))
+                filebase = suffix_exist.sub('', value)
+                if not re.match(exclusions, filebase):
+                    filtered_files.append(filebase)
 
         compare_files = list(set(filtered_files))
         compare_files.sort()
 
         for filename in compare_files:
-            pre_filename = os.path.join(workdir,
-                                        "%s.%s" % (filename, options.pre_suffix))
-            if os.path.exists(pre_filename):
-                run.get_diff_files(filename, options)
+            run.get_diff_files(filename, options)
 
         # Report subdirectories at the subdir level unless ther verbose option is
         # given, in which case report as usual
