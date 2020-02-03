@@ -1,12 +1,11 @@
 Name:          configsnap
-Version:       0.17.1
+Version:       0.18.0
 Release:       1%{?dist}
 Summary:       Record and compare system state
 License:       ASL 2.0
 URL:           https://github.com/rackerlabs/%{name}
 Source0:       https://github.com/rackerlabs/%{name}/archive/%{version}.tar.gz
 # Changes the python shebang to python2
-Patch0:        python_executable.patch
 BuildArch:     noarch
 BuildRequires: python2-devel
 BuildRequires: help2man
@@ -17,7 +16,6 @@ with a previous state and identify changes
 
 %prep
 %setup -q
-%patch0 -p0
 
 %build
 help2man --include=%{name}.help2man --no-info ./%{name} -o %{name}.man
@@ -42,6 +40,9 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
+* Mon Feb 03 2020 Nick Rhodes <nrhodes91@gmail.com> - 0.18.0-1
+- Improvements to get_diff (PR 110)
+
 * Wed Jul 03 2019 Nick Rhodes <nrhodes91@gmail.com> - 0.17.1-1
 - Convert relative basedir to absolute path (PR 103)
 
