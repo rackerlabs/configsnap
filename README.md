@@ -3,9 +3,9 @@
 Records useful system state information, and compare to previous state if run
 with PHASE containing "post" or "rollback".
 
-Tested on RHEL, CentOS, Fedora and Ubuntu, but should also work on other
-derivatives. For other distros, config will be collected where the commands or
-file locations match RHEL or Ubuntu.
+Tested and packaged for RHEL and it's derivatives through the EPEL repository.
+Packages are also supplied for recent Debian based systems, however they are
+less tested.
 
 ```
 Usage: configsnap [options]
