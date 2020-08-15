@@ -267,8 +267,11 @@ class dataGather:
                              (command[0], e.strerror))
             return False
 
-        # Can't change this to Popen.communicate() as it needs to be a list for the sort below
-        cmd_stdout = cmd_proc.stdout.readlines()
+        # Put both stdout and stderr in separate strings
+        cmd_stdout, cmd_stderr = cmd_proc.communicate()
+
+        # Convert stdout to a list and preserve the newlines
+        cmd_stdout = cmd_stdout.splitlines(True)
 
         returncode = cmd_proc.wait()
         if not fail_ok and returncode != 0:
