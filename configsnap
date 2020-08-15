@@ -545,7 +545,7 @@ for section in Config.sections():
                          "should be \"file\", \"directory\" or \"command\"" % section)
 
 run = dataGather(workdir, phase)
-report_info("Getting storage details (LVM, partitions, multipathing)...")
+report_info("Getting storage details (LVM, partitions, multipathing, lsblk, blkid)...")
 if os.path.exists('/sbin/lvs'):
     run.run_command(['lvs', '--noheadings'], 'lvs', fail_ok=True, sort=True)
     run.run_command(['vgs', '--noheadings'], 'vgs', fail_ok=True, sort=True)
@@ -571,6 +571,10 @@ if os.path.exists('/etc/multipath.conf'):
 if os.path.exists('/sbin/powermt'):
     run.run_command(['powermt', 'display', 'dev=all'],
                     'powermt', fail_ok=True, sort=False, stdout=False)
+if os.path.exists('/usr/bin/lsblk')
+    run.run_command(['lsblk'], 'lsblk', fail_ok=True, sort=False)
+if os.path.exists('/usr/bin/blkid')
+    run.run_command(['blkid'], 'blkid', fail_ok=True, sort=False)
 
 report_info("Getting process list...")
 run.run_command(['ps', 'a', 'u', 'f', 'x'], 'ps', fail_ok=False, sort=False)
