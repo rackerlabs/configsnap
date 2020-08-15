@@ -24,7 +24,7 @@ import glob
 import re
 import tarfile
 
-version = "0.17.1"
+version = "0.18.0"
 diffs_found = False
 
 
@@ -132,7 +132,7 @@ def compare_files(options):
     # Collects all files and dir at the top level
     all_files = os.listdir(workdir)
     # Those will always result in positive diffs, this is misleading so we exclude them
-    exclusions = '^(sysctl|vgcfgbackup[-].*|ps|meminfo|dmesg|crm_mon|pcs_status)$'
+    exclusions = '^(sysctl|vgcfgbackup[-].*|ps|meminfo|dmesg|crm_mon)$'
 
     # Proceed if at least one file with options.pre_suffix is present
     if any(filename.endswith(".%s" % options.pre_suffix) for filename in all_files):
@@ -255,7 +255,8 @@ class dataGather:
                                    fail_ok=False,
                                    sort=False)
 
-    def run_command(self, command, filename, fail_ok=False, sort=False, stdout=False, shell=False):
+    def run_command(self, command, filename, fail_ok=False, sort=False, stdout=False, shell=False, regexp_filter=None):
+
         try:
             cmd_proc = subprocess.Popen(
                 command, stdout=subprocess.PIPE,
@@ -284,6 +285,11 @@ class dataGather:
 
         if sort:
             cmd_stdout.sort()
+
+        # Filtering the output before storing into file, if applicable
+        if regexp_filter is not None:
+            myfilter = re.compile(regexp_filter)
+            cmd_stdout = list(filter(myfilter.match, cmd_stdout))
 
         filename = os.path.join(self.workdir, "%s.%s" % (filename, self.phase))
 
@@ -599,8 +605,9 @@ if os.path.exists('/usr/bin/systemctl'):
 
 report_info(
     "Getting network details, firewall rules and listening services...")
-run.run_command(['bash', '-c', 'ip a s | sed "/^\s\+valid_lft.*/d"'],
-                'ip_addresses', fail_ok=False, sort=False)  # noqa: W605
+run.run_command(['ip', 'a', 's'],
+                'ip_addresses', fail_ok=False, sort=False,
+                regexp_filter=r'^(?!\s+valid_lft).*')
 run.run_command(['ip', 'route', 'show'],
                 'ip_routes', fail_ok=False, sort=False)
 run.run_command(['iptables', '--list-rules'],
@@ -615,7 +622,8 @@ if os.path.exists('/usr/sbin/clustat'):
                     fail_ok=False, sort=False, stdout=False)
 if os.path.exists('/usr/sbin/pcs'):
     run.run_command(['pcs', 'status'], 'pcs_status',
-                    fail_ok=False, sort=False, stdout=False)
+                    fail_ok=False, sort=False, stdout=False,
+                    regexp_filter=r'^(?!Last updated).*')
     run.run_command(['pcs', 'constraint', 'show', '--full'], 'pcs_constraints',
                     fail_ok=False, sort=False, stdout=False)
 if os.path.exists('/sbin/crm_mon'):
