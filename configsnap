@@ -95,7 +95,7 @@ def create_dir(tagdir, overwrite):
         try:
             os.makedirs(workdir)
         except OSError, e:
-            report_error("Unable to create %s" % (workdir, e))
+            report_error("Unable to create %s: %s" % (workdir, e))
             sys.exit(1)
 
     return workdir
@@ -205,7 +205,7 @@ class dataGather:
             try:
                 os.makedirs(destdir)
             except OSError, e:
-                report_error("Unable to create directory %s" % (workdir, e))
+                report_error("Unable to create directory %s: %s" % (workdir, e))
                 sys.exit(1)
 
         if not os.path.exists(r_filename):
