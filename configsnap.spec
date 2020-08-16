@@ -1,5 +1,5 @@
 Name:          configsnap
-Version:       0.18.0
+Version:       0.19.0
 Release:       1%{?dist}
 Summary:       Record and compare system state
 License:       ASL 2.0
@@ -40,6 +40,11 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
+* Sun Aug 16 2020 Nick Rhodes <nrhodes91@gmail.com> - 0.19.0-1
+- Added lsblk and blkid (PR 115)
+- Fix flake8 warnings (PR 118)
+- Filtering out update line in pcs status (PR 112)
+
 * Mon Feb 03 2020 Nick Rhodes <nrhodes91@gmail.com> - 0.18.0-1
 - Improvements to get_diff (PR 110)
 
