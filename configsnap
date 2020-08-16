@@ -95,7 +95,7 @@ def create_dir(tagdir, overwrite):
         try:
             os.makedirs(workdir)
         except OSError, e:
-            report_error("Unable to create %s" % (workdir, e))
+            report_error("Unable to create %s: %s" % (workdir, e))
             sys.exit(1)
 
     return workdir
@@ -205,7 +205,7 @@ class dataGather:
             try:
                 os.makedirs(destdir)
             except OSError, e:
-                report_error("Unable to create directory %s" % (workdir, e))
+                report_error("Unable to create directory %s: %s" % (workdir, e))
                 sys.exit(1)
 
         if not os.path.exists(r_filename):
@@ -545,7 +545,7 @@ for section in Config.sections():
                          "should be \"file\", \"directory\" or \"command\"" % section)
 
 run = dataGather(workdir, phase)
-report_info("Getting storage details (LVM, partitions, multipathing, lsblk, blkid)...")
+report_info("Getting storage details (LVM, partitions, multipathing)...")
 if os.path.exists('/sbin/lvs'):
     run.run_command(['lvs', '--noheadings'], 'lvs', fail_ok=True, sort=True)
     run.run_command(['vgs', '--noheadings'], 'vgs', fail_ok=True, sort=True)
@@ -571,10 +571,6 @@ if os.path.exists('/etc/multipath.conf'):
 if os.path.exists('/sbin/powermt'):
     run.run_command(['powermt', 'display', 'dev=all'],
                     'powermt', fail_ok=True, sort=False, stdout=False)
-if os.path.exists('/usr/bin/lsblk'):
-    run.run_command(['lsblk'], 'lsblk', fail_ok=True, sort=False)
-if os.path.exists('/usr/bin/blkid'):
-    run.run_command(['blkid'], 'blkid', fail_ok=True, sort=False)
 
 report_info("Getting process list...")
 run.run_command(['ps', 'a', 'u', 'f', 'x'], 'ps', fail_ok=False, sort=False)
@@ -600,8 +596,8 @@ if os.path.exists('/usr/bin/systemctl'):
 
 report_info(
     "Getting network details, firewall rules and listening services...")
-run.run_command(['bash', '-c', 'ip a s | sed "/^\s\+valid_lft.*/d"'],
-                'ip_addresses', fail_ok=False, sort=False)  # noqa: W605
+run.run_command(['bash', '-c', r'ip a s | sed "/^\s\+valid_lft.*/d"'],
+                'ip_addresses', fail_ok=False, sort=False)
 run.run_command(['ip', 'route', 'show'],
                 'ip_routes', fail_ok=False, sort=False)
 run.run_command(['iptables', '--list-rules'],
