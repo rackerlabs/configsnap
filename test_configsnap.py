@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Copyright 2016 Rackspace, Inc.
+# Copyright 2016-2021 Rackspace, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 # this file except in compliance with the License.  You may obtain a copy of the
@@ -15,7 +15,7 @@
 
 
 # Functional tests
-
+from __future__ import print_function
 import inspect
 import os
 import re
@@ -29,18 +29,18 @@ class TestResult:
     def __init__(self, stdout, stderr, retcode):
         # Remove ANSI color escape sequences from text
         ansi_escape = re.compile(r'\x1b[^m]*m')
-        self.stdout = ansi_escape.sub('', stdout)
-        self.stderr = ansi_escape.sub('', stderr)
+        self.stdout = ansi_escape.sub('', stdout.decode('utf-8'))
+        self.stderr = ansi_escape.sub('', stderr.decode('utf-8'))
         self.retcode = retcode
 
     def stdout(self):
-        print self.stdout
+        print(self.stdout)
 
     def stderr(self):
-        print self.stderr
+        print(self.stderr)
 
     def retcode(self):
-        print self.retcode
+        print(self.retcode)
 
 
 class FunctionalTests:
@@ -78,7 +78,7 @@ class FunctionalTests:
         """Customised output directory; -d commandline option"""
         test = self.whoami()
         o = self.run_command('./configsnap -d /tmp/test -t functests')
-        if o.retcode is not 0:
+        if o.retcode != 0:
             self.failtest(test, "Exit code non-zero")
         else:
             print("%s PASS Exit code zero" % test)
@@ -98,7 +98,7 @@ class FunctionalTests:
         """Customised tag; -t command line option"""
         test = self.whoami()
         o = self.run_command('./configsnap -t randomalternativetag')
-        if o.retcode is not 0:
+        if o.retcode != 0:
             self.failtest(test, "Exit code non-zero")
         else:
             print("%s PASS Exit code zero" % test)
@@ -119,7 +119,7 @@ class FunctionalTests:
         test = self.whoami()
         for i in range(1, 4):
             o = self.run_command('./configsnap -t overwrite -p pre -w')
-            if o.retcode is not 0:
+            if o.retcode != 0:
                 self.failtest(test, "Exit code non-zero, run %i" % i)
             else:
                 print("%s PASS Exit code zero, run %i" % (test, i))
@@ -128,14 +128,14 @@ class FunctionalTests:
         """Don't overwrite by default"""
         test = self.whoami()
         o = self.run_command('./configsnap -t nooverwrite -p pre')
-        if o.retcode is not 0:
+        if o.retcode != 0:
             self.failtest(test, "Exit code non-zero, initial run")
         else:
             print("%s PASS Exit code zero, initial run" % test)
 
         o = self.run_command('./configsnap -t nooverwrite -p pre')
-        if o.retcode is not 1:
-            print o.retcode
+        if o.retcode != 1:
+            print(o.retcode)
             self.failtest(test, "Exit code not 1, second run")
         else:
             print("%s PASS Exit code 1, didn't overwrite, second run" % test)
