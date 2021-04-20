@@ -274,7 +274,9 @@ class dataGather:
 
         # Put both stdout and stderr in separate strings
         cmd_stdout, cmd_stderr = cmd_proc.communicate()
-        cmd_stdout, cmd_stderr = cmd_stdout.decode('utf8'), cmd_stderr.decode('utf8')
+        if not isinstance(cmd_stdout, str):
+            # Python3 returns bytes
+            cmd_stdout, cmd_stderr = cmd_stdout.decode('utf8'), cmd_stderr.decode('utf8')
 
         # Convert stdout to a list and preserve the newlines
         cmd_stdout = cmd_stdout.splitlines(True)
@@ -333,7 +335,9 @@ class dataGather:
             return False
 
         diff_stdout, diff_stderr = diff_proc.communicate(input=None)
-        diff_stdout, diff_stderr = diff_stdout.decode('utf8'), diff_stderr.decode('utf8')
+        if not isinstance(diff_stdout, str):
+            # Python3 returns bytes
+            diff_stdout, diff_stderr = diff_stdout.decode('utf8'), diff_stderr.decode('utf8')
 
         if diff_proc.returncode != 0:
             global diffs_found
@@ -407,7 +411,9 @@ class dataGather:
                 stderr=subprocess.PIPE)
 
             procs_out, procs_err = procs.communicate()
-            procs_out, procs_err = procs_out.decode('utf8'), procs_err.decode('utf8')
+            if not isinstance(procs_out, str):
+                # Python3 returns bytes
+                procs_out, procs_err = procs_out.decode('utf8'), procs_err.decode('utf8')
             if procs.returncode == 0:
                 self.procs_out = [x.split()[0] for x in procs_out.splitlines()]
             else:
