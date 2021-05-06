@@ -1,6 +1,6 @@
-#!/usr/bin/python2
+#!/usr/bin/python
 
-# Copyright 2016 Rackspace, Inc.
+# Copyright 2016-2021 Rackspace, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 # this file except in compliance with the License.  You may obtain a copy of the
@@ -12,8 +12,12 @@
 # under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 # CONDITIONS OF ANY KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations under the License.
-
-import ConfigParser
+from __future__ import print_function
+try:
+    import configparser
+except ImportError:
+    # Python2 compatibility
+    import ConfigParser as configparser
 import os
 import os.path
 import optparse
@@ -87,14 +91,14 @@ def create_dir(tagdir, overwrite):
                     if filename.endswith(".%s" % options.phase):
                         os.remove(os.path.join(root, filename))
 
-        except OSError, e:
+        except OSError as e:
             report_error("Unable to remove %s: %s" % (workdir, e))
             sys.exit(1)
 
     if not os.path.isdir(workdir):
         try:
             os.makedirs(workdir)
-        except OSError, e:
+        except OSError as e:
             report_error("Unable to create %s: %s" % (workdir, e))
             sys.exit(1)
 
@@ -118,7 +122,7 @@ def create_archive(tagdir, workdir, tag, overwrite):
         tar = tarfile.open(output_filename, "w:gz")
         tar.add(workdir, arcname=os.path.basename(workdir))
         tar.close()
-    except IOError, e:
+    except IOError as e:
         report_error("Can't create archive %s: %s" % (output_filename, e))
         sys.exit(1)
 
@@ -173,7 +177,7 @@ def compare_files(options):
             if uname_pre != uname_post:
                 sys.stdout.write("Old uname: %s. New uname: %s\n" %
                                  (uname_pre, uname_post))
-        except Exception, e:
+        except Exception as e:
             report_error(
                 "Unable to open file %s: %s" % ((e.filename, e.strerror)))
 
@@ -204,7 +208,7 @@ class dataGather:
         if not os.path.exists(destdir):
             try:
                 os.makedirs(destdir)
-            except OSError, e:
+            except OSError as e:
                 report_error("Unable to create directory %s: %s" % (workdir, e))
                 sys.exit(1)
 
@@ -262,7 +266,7 @@ class dataGather:
                 command, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, shell=shell)
 
-        except OSError, e:
+        except OSError as e:
             if not fail_ok:
                 report_error("Error running %s: %s" %
                              (command[0], e.strerror))
@@ -270,6 +274,9 @@ class dataGather:
 
         # Put both stdout and stderr in separate strings
         cmd_stdout, cmd_stderr = cmd_proc.communicate()
+        if not isinstance(cmd_stdout, str):
+            # Python3 returns bytes
+            cmd_stdout, cmd_stderr = cmd_stdout.decode('utf8'), cmd_stderr.decode('utf8')
 
         # Convert stdout to a list and preserve the newlines
         cmd_stdout = cmd_stdout.splitlines(True)
@@ -304,7 +311,7 @@ class dataGather:
                 if stdout:
                     sys.stdout.writelines(cmd_stdout)
 
-        except IOError, e:
+        except IOError as e:
             report_error("Unable to open %s: %s" % (filename, e.strerror))
             return False
 
@@ -322,12 +329,15 @@ class dataGather:
                                          stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE,
                                          shell=False)
-        except OSError, e:
+        except OSError as e:
             report_error("Error running diff: %s" %
                          (e.strerror))
             return False
 
         diff_stdout, diff_stderr = diff_proc.communicate(input=None)
+        if not isinstance(diff_stdout, str):
+            # Python3 returns bytes
+            diff_stdout, diff_stderr = diff_stdout.decode('utf8'), diff_stderr.decode('utf8')
 
         if diff_proc.returncode != 0:
             global diffs_found
@@ -358,7 +368,7 @@ class dataGather:
             try:
                 post_fd = open(post_filename)
                 post_fd.close()
-            except IOError, e:
+            except IOError as e:
                 report_error("- File removed: %s" % (e.filename))
                 continue
 
@@ -370,7 +380,7 @@ class dataGather:
                                              stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE,
                                              shell=False)
-            except OSError, e:
+            except OSError as e:
                 report_error("Error running diff: %s" %
                              (e.strerror))
                 return None
@@ -401,6 +411,9 @@ class dataGather:
                 stderr=subprocess.PIPE)
 
             procs_out, procs_err = procs.communicate()
+            if not isinstance(procs_out, str):
+                # Python3 returns bytes
+                procs_out, procs_err = procs_out.decode('utf8'), procs_err.decode('utf8')
             if procs.returncode == 0:
                 self.procs_out = [x.split()[0] for x in procs_out.splitlines()]
             else:
@@ -471,7 +484,7 @@ parser.add_option('-c', '--config', default='/etc/configsnap/additional.conf',
 (options, args) = parser.parse_args()
 
 if options.print_version:
-    print "configsnap %s" % version
+    print("configsnap %s" % version)
     sys.exit(0)
 
 if os.geteuid() != 0:
@@ -485,7 +498,7 @@ if not options.tag:
 check_option_conflicts(options)
 
 # Load custom collection list
-Config = ConfigParser.ConfigParser()
+Config = configparser.ConfigParser()
 # Grab the full path before we chdir
 customcollectionfile = os.path.abspath(options.config)
 
@@ -567,7 +580,7 @@ if os.path.exists('/sbin/lvs'):
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
         vgcfg.wait()
-    except OSError, e:
+    except OSError as e:
         report_error("Error running vgcfgbackup: %s" % e.strerror)
     else:
         if vgcfg.returncode != 0:
@@ -750,10 +763,10 @@ for section in Config.sections():
             report_info("Running custom command %s: %s" % (section, cmd))
             run.run_command(
                 cmd.split(), section, fail_ok=failokcfg, sort=sortcfg)
-    except ConfigParser.NoOptionError, e:
+    except configparser.NoOptionError as e:
         report_error(
             "Check config file options for section %s: %s" % (section, e))
-    except Exception, e:
+    except Exception as e:
         report_error(
             "Could not parse config file section %s: %s" % (section, e))
 
@@ -828,10 +841,10 @@ for section in Config.sections():
             run.copy_dir(cpdir, file_pattern=config_file_pattern,
                          fail_ok=failokcfg, sort=False)
 
-    except ConfigParser.NoOptionError, e:
+    except configparser.NoOptionError as e:
         report_error(
             "Check config file options for section %s: %s" % (section, e))
-    except Exception, e:
+    except Exception as e:
         report_error(
             "Could not parse config file section %s: %s" % (section, e))
 
