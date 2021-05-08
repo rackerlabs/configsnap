@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Copyright 2016-2021 Rackspace, Inc.
 #
@@ -28,7 +28,7 @@ import glob
 import re
 import tarfile
 
-version = "0.19.0"
+version = "0.20.0"
 diffs_found = False
 
 

@@ -1,6 +1,7 @@
 FROM centos:6
-RUN yum install -q -y git rpm-build rpm-devel rpmlint make python rpmdevtools \
-    help2man python2-devel \
+RUN sed -ri -e 's/mirrorlist/#mirrorlist/' -e 's;#baseurl=http://mirror.centos.org/centos/\$releasever/;baseurl=http://vault.centos.org/6.10/;' /etc/yum.repos.d/CentOS-Base.repo
+RUN yum install -q -y git rpm-build rpm-devel rpmlint make python rpmdevtools redhat-lsb-core \
+        help2man \
     && groupadd -g 1004 builduser \
     && useradd -m -u 1003 -g builduser builduser
 
@@ -8,4 +9,4 @@ USER builduser
 RUN mkdir /home/builduser/configsnap \
     && rpmdev-setuptree
 WORKDIR /home/builduser/configsnap
-CMD ["make","el6"]
+CMD ["make","rpm"]

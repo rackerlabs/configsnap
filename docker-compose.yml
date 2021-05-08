@@ -1,35 +1,32 @@
 version: '3'
 services:
-  el6:
-    build:
-      context: .
-      dockerfile: ./dockerfiles/Dockerfile-el6
-    volumes:
-      - .:/home/builduser/configsnap
-      - ~/rpmbuild/RPMS:/home/builduser/rpmbuild/RPMS
-      - ~/rpmbuild/SOURCES:/home/builduser/rpmbuild/SOURCES
-
-  el7:
-    build:
-      context: .
-      dockerfile: ./dockerfiles/Dockerfile-el7
-    volumes:
-      - .:/home/builduser/configsnap
-      - ~/rpmbuild/RPMS:/home/builduser/rpmbuild/RPMS
-      - ~/rpmbuild/SOURCES:/home/builduser/rpmbuild/SOURCES
-
-  fedora:
+  fedora: &rhelconfig
     build:
       context: .
       dockerfile: ./dockerfiles/Dockerfile-fedora
     volumes:
       - .:/home/builduser/configsnap
-      - ~/rpmbuild/RPMS:/home/builduser/rpmbuild/RPMS
-      - ~/rpmbuild/SOURCES:/home/builduser/rpmbuild/SOURCES
-
-  deb:
+      - ./rpmbuild/RPMS:/home/builduser/rpmbuild/RPMS
+      - ./rpmbuild/SRPMS:/home/builduser/rpmbuild/SRPMS
+      - ./rpmbuild/SOURCES:/home/builduser/rpmbuild/SOURCES
+  el8:
+    <<: *rhelconfig
     build:
       context: .
-      dockerfile: ./dockerfiles/Dockerfile-deb
+      dockerfile: ./dockerfiles/Dockerfile-el8
+  el7:
+    <<: *rhelconfig
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile-el7
+  el6:
+    <<: *rhelconfig
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile-el6
+  buster:
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile-buster
     volumes:
       - .:/home/builduser/configsnap

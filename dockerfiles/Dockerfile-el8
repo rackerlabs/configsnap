@@ -1,0 +1,12 @@
+FROM centos:8
+RUN yum install -y epel-release && yum install --enablerepo powertools -q -y git \
+        rpm-build rpm-devel rpmlint epel-rpm-macros make python3 python3-devel \
+        rpmdevtools help2man redhat-lsb-core \
+    && groupadd -g 1004 builduser \
+    && useradd -m -u 1003 -g builduser builduser
+
+USER builduser
+RUN mkdir /home/builduser/configsnap \
+    && rpmdev-setuptree
+WORKDIR /home/builduser/configsnap
+CMD ["make","rpm"]
