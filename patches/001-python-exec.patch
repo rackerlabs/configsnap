@@ -1,0 +1,10 @@
+diff --git a/configsnap b/configsnap
+index b4143dd..b2a92c1 100755
+--- a/configsnap
++++ b/configsnap
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python3
++#!/usr/bin/python
+ 
+ # Copyright 2016-2021 Rackspace, Inc.
+ #

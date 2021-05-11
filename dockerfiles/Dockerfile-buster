@@ -1,6 +1,6 @@
-FROM debian:latest
+FROM debian:buster
 RUN apt update \
-    && apt install -y python devscripts build-essential gawk help2man \
+    && apt install -y python devscripts build-essential gawk help2man lsb-release \
     && groupadd -g 1004 builduser \
     && useradd -m -u 1003 -g builduser builduser
 

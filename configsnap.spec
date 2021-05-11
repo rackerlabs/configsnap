@@ -1,14 +1,17 @@
-Name:          configsnap
-Version:       0.19.0
-Release:       1%{?dist}
-Summary:       Record and compare system state
-License:       ASL 2.0
-URL:           https://github.com/rackerlabs/%{name}
-Source0:       https://github.com/rackerlabs/%{name}/archive/%{version}.tar.gz
-# Changes the python shebang to python2
-BuildArch:     noarch
-BuildRequires: python2-devel
-BuildRequires: help2man
+Name:           configsnap
+Version:        0.20.0
+Release:        3%{?dist}
+Summary:        Record and compare system state
+License:        ASL 2.0
+URL:            https://github.com/rackerlabs/%{name}
+Source0:        https://github.com/rackerlabs/%{name}/archive/%{version}.tar.gz
+BuildArch:      noarch
+BuildRequires:  help2man
+%if 0%{?rhel} >= 8 || 0%{?fedora}
+BuildRequires:  python3
+%else
+BuildRequires:  python2
+%endif
 
 %description
 configsnap records important system state information and can optionally compare
@@ -40,6 +43,12 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
+* Fri May 07 2021 Nick Rhodes <nrhodes91@gmail.com> - 0.20.0-3
+- Fix build issues in Koji
+
+* Fri May 07 2021 Nick Rhodes <nrhodes91@gmail.com> - 0.20.0-1
+- Port to python3 compatibility (PR 120)
+
 * Sun Aug 16 2020 Nick Rhodes <nrhodes91@gmail.com> - 0.19.0-1
 - Added lsblk and blkid (PR 115)
 - Fix flake8 warnings (PR 118)

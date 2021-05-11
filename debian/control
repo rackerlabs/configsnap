@@ -8,7 +8,7 @@ Homepage: https://github.com/rackerlabs/configsnap
 
 Package: configsnap
 Depends:
-    python, python2.7, diffutils
+    python3, diffutils
 Architecture: all
 Description: configsnap records important system state information and can
     optionally compare with a previous state and identify changes
