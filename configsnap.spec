@@ -1,6 +1,6 @@
 Name:           configsnap
 Version:        0.20.0
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Record and compare system state
 License:        ASL 2.0
 URL:            https://github.com/rackerlabs/%{name}
@@ -21,7 +21,11 @@ with a previous state and identify changes
 %setup -q
 
 %build
+%if 0%{?rhel} >= 8 || 0%{?fedora}
+sed -i 's#/bin/python$#/bin/python3#g' ./%{name}
+%endif
 help2man --include=%{name}.help2man --no-info ./%{name} -o %{name}.man
+
 
 %install
 mkdir -p %{buildroot}%{_sbindir} \
@@ -43,6 +47,9 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
+* Wed May 12 2021 Christos Triantafyllidis <christos.triantafyllidis@rackspace.co.uk> - 0.20.0-4
+- Update python binary for python3 based distros
+
 * Fri May 07 2021 Nick Rhodes <nrhodes91@gmail.com> - 0.20.0-3
 - Fix build issues in Koji
 
