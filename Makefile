@@ -69,8 +69,8 @@ deb: prepare-patches
 
 
 prepare-patches: setup-build-dir
-ifeq ($(DIST)$(DIST_VER), CentOS7)
-	git apply --directory $(BUILD_ROOT)/$(DIST_DIR)/$(BUILD_DIR) $(PATCH_DIR)/001-python-exec.patch
+ifeq ($(DIST)$(DIST_VER), Debian10)
+	sed -i 's#/bin/python$$#/bin/python3#g' $(BUILD_ROOT)/$(DIST_DIR)/$(BUILD_DIR)/configsnap
 endif
 
 setup-build-dir: $(BUILD_FILES)
