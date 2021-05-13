@@ -1,6 +1,6 @@
 Name:           configsnap
-Version:        0.20.0
-Release:        4%{?dist}
+Version:        0.20.1
+Release:        1%{?dist}
 Summary:        Record and compare system state
 License:        ASL 2.0
 URL:            https://github.com/rackerlabs/%{name}
@@ -47,7 +47,7 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
-* Wed May 12 2021 Christos Triantafyllidis <christos.triantafyllidis@rackspace.co.uk> - 0.20.0-4
+* Wed May 12 2021 Christos Triantafyllidis <christos.triantafyllidis@rackspace.co.uk> - 0.20.1-1
 - Update python binary for python3 based distros
 
 * Fri May 07 2021 Nick Rhodes <nrhodes91@gmail.com> - 0.20.0-3
