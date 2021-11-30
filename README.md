@@ -101,3 +101,82 @@ File_Pattern: .*\.local$
      appended with ".<phase>"
 ```
 
+## Example Scenarios
+
+### Zero Footprint Install
+
+Isolating Configsnap's code, configuration and snapshot data in a /tmp directory allows:
+- avoiding Configsnap files from getting into the snapshots or comparisons
+- does not soil systems that have strictly managed configurations
+- is easy to clean up
+- reflects a least privileged approach
+- enables a portable reference baseline to copy to other machines
+- the portable reference baseline, importantly, contains the exact version of Configsnap and exact configuration file that was used on the reference system.
+
+For more information on configuring Configsnap this way, read the post [Solution for Reverse Engineering Linux Config Deltas Via System-wide Diffing](https://missionimpossiblecode.io/post/solution-for-reverse-engineering-linux-config-deltas-via-system-wide-diffing/) and/or consult the run from web code from the post at [ConfigsnapCreateKnownGood.sh](https://gitlab.com/missionimpossiblecode/MissionImpossibleCode/-/blob/master/ConfigsnapCreateKnownGood.sh)
+
+#### Install Configsnap
+
+Works on any distro or arch and does not require Git or package managers.
+
+```
+mkdir -p /tmp/configsnap
+curl https://raw.githubusercontent.com/rackerlabs/configsnap/master/configsnap -o /tmp/configsnap/configsnap
+chmod +x /tmp/configsnap/configsnap
+```
+
+#### Create configuration
+
+Create /tmp/configsnap/additional.conf additions to compare all files in /etc and ".something" files in /home/
+
+```
+[allmachineconfig]
+Type: directory
+Directory: /etc/
+
+[piconfig]
+Type: directory
+Directory: /home/
+File_Pattern: \..*
+```
+
+**NOTE: If your compare generates a message like "No extra post files found in..." for your extra directories, file compares were still done, but it is likely you compared two snaps with no differences. Use --verbose to see that all
+file compares were simply identical.
+
+### Before and After On The Same Machine For Drift Detection or Reverse Engineering of Software Installation
+
+#### Create the reference baseline snapshot
+```
+echo "Creating Pre Configuration Snapshot"
+sudo /tmp/configsnap/configsnap --basedir=/tmp/configsnap/snaps --verbose --tag=beforeandafter --phase=pre
+```
+
+#### After changes (or drift) occurs
+
+```
+sudo /tmp/configsnap/configsnap --basedir=/tmp/configsnap/snaps --verbose --tag=beforeandafter --phase=post
+#Because the after phase name is "post", an automatic compare of "pre" and "post" is performed
+```
+
+### Compare a Known Working Reference Baseline Machine to a Non-Working Or Clean Baseline Machine
+
+#### On the known good reference machine
+
+```
+# Follow "Prepare Zero Footprint Install" above
+#edit additional.conf in directory next to configsnap to add full compare
+sudo ./configsnap --basedir=/tmp/configsnap/snaps --verbose --tag=crossmachinecompare --phase=knowngoodconfig
+
+# The /tmp/configsnap/ directory tree can be stored in a central location if it is a reference configuration
+```
+
+#### On the machine that is the comparison target (drifted, broken or clean baseline)
+
+```
+# Pull the code, config and known good snapshot data from the reference system (or a central area if copied to one)
+scp -r user_on_reference_system@referencesystemdnsorip:/tmp/configsnap /tmp/configsnap
+
+# Run an scp command to push files to machine that has drifted
+sudo /tmp/configsnap/configsnap --basedir=/tmp/configsnap/snaps --verbose --tag=crossmachinecompare --pre=knowngoodconfig --phase=post
+#Because the after phase name is "post", an automatic compare of "knowngoodconfig" and "post" is performed
+```
