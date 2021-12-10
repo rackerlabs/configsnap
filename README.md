@@ -134,10 +134,20 @@ Create /tmp/configsnap/additional.conf additions to compare all files in /etc an
 Type: directory
 Directory: /etc/
 
-[piconfig]
+[userconfig]
 Type: directory
 Directory: /home/
 File_Pattern: \..*
+
+[systemduserservices]
+Type: directory
+Directory: /lib/systemd/user
+File_Pattern: .*\.service$
+
+[systemdsystemservices]
+Type: directory
+Directory: /lib/systemd/system
+File_Pattern: .*\.servic
 ```
 
 **NOTE: If your compare generates a message like "No extra post files found in..." for your extra directories, file compares were still done, but it is likely you compared two snaps with no differences. Use --verbose to see that all
