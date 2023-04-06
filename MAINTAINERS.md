@@ -1,7 +1,6 @@
 configsnap is maintained by:
 ```
     - Paolo Gigante
-    - Nicholas Rhodes
     - Jean-Yves Michaud
 ```
 
