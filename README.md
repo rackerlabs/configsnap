@@ -57,6 +57,7 @@ Copying files...
  /etc/sysconfig/network
  /etc/yum.conf
  /proc/cmdline
+ /proc/cpuinfo
  /proc/meminfo
  /proc/mounts
  /proc/scsi/scsi
