@@ -1,5 +1,5 @@
 Name:           configsnap
-Version:        0.20.1
+Version:        0.21.1
 Release:        1%{?dist}
 Summary:        Record and compare system state
 License:        ASL 2.0
@@ -47,6 +47,9 @@ install -p -m 0600 additional.conf %{buildroot}%{_sysconfdir}/%{name}/additional
 %{_sysconfdir}/%{name}
 
 %changelog
+* Mon Nov 20 2023 Mark Hyde <mark.hyde@rackspace.co.uk> - 0.21.1-1
+- Add /proc/cpuinfo (PR 128)
+
 * Wed May 12 2021 Christos Triantafyllidis <christos.triantafyllidis@rackspace.co.uk> - 0.20.1-1
 - Update python binary for python3 based distros
 

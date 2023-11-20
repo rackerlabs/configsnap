@@ -28,7 +28,7 @@ import glob
 import re
 import tarfile
 
-version = "0.20.1"
+version = "0.21.1"
 diffs_found = False
 
 
