@@ -18,6 +18,7 @@ try:
 except ImportError:
     # Python2 compatibility
     import ConfigParser as configparser
+import locale
 import os
 import os.path
 import optparse
@@ -30,7 +31,7 @@ import tarfile
 
 version = "0.21.1"
 diffs_found = False
-
+encoding = locale.getpreferredencoding()
 
 def report_verbose(message):
     if options.verbose_enabled:
@@ -276,7 +277,7 @@ class dataGather:
         cmd_stdout, cmd_stderr = cmd_proc.communicate()
         if not isinstance(cmd_stdout, str):
             # Python3 returns bytes
-            cmd_stdout, cmd_stderr = cmd_stdout.decode('utf8'), cmd_stderr.decode('utf8')
+            cmd_stdout, cmd_stderr = cmd_stdout.decode(encoding), cmd_stderr.decode(encoding)
 
         # Convert stdout to a list and preserve the newlines
         cmd_stdout = cmd_stdout.splitlines(True)
