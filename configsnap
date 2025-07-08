@@ -277,7 +277,8 @@ class dataGather:
         cmd_stdout, cmd_stderr = cmd_proc.communicate()
         if not isinstance(cmd_stdout, str):
             # Python3 returns bytes
-            cmd_stdout, cmd_stderr = cmd_stdout.decode(encoding), cmd_stderr.decode(encoding)
+            cmd_stdout = cmd_stdout.decode(encoding, errors='replace')
+            cmd_stderr = cmd_stderr.decode(encoding, errors='replace')
 
         # Convert stdout to a list and preserve the newlines
         cmd_stdout = cmd_stdout.splitlines(True)
