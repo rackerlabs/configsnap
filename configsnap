@@ -391,7 +391,10 @@ class dataGather:
                 global diffs_found
                 diffs_found = True
                 report_error("Differences found against %s:\n" % pre_filename)
-                sys.stdout.writelines(diff_proc.stdout.readlines())
+                output = diff_proc.stdout.readlines()
+                if isinstance(output, list):
+                    output = '\n'.join(str(x) for x in output)
+                sys.stdout.writelines(output)
             elif options.verbose_enabled is True:
                 report_verbose("No differences against %s" % pre_filename)
 
